@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Golf Club Social Platform
+
+A social platform for your golf club. Create an account with your email, sign in, and manage your profile.
+
+## Features
+
+- **Accounts** – Sign up and sign in with email (used as username)
+- **Profile Page** – Update First Name, Last Name, GHIN Number, and Handicap Index
+- **Manual Handicap** – Users and admins update handicap data manually (no API lookup)
 
 ## Getting Started
 
-First, run the development server:
+**Requires Node.js 18.17.0 or later.**
 
 ```bash
+npm install
+npm run db:push    # Create the SQLite database (first time only)
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). Create an account, sign in, then go to **My Profile**.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Copy `.env.example` to `.env` and set:
 
-## Learn More
+- `NEXTAUTH_SECRET` – Required for session encryption. Generate with: `openssl rand -base64 32`
+- `NEXTAUTH_URL` – Your app URL (e.g. `http://localhost:3000`)
+- `INITIAL_ADMIN_EMAIL` – (Optional) Comma-separated emails. Users who sign up with these emails get the `admin` role. Example: `admin@club.com,other@club.com`
 
-To learn more about Next.js, take a look at the following resources:
+## User Roles
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **member** – Default role for new accounts. Full access to profile, members, tournaments, and registration.
+- **admin** – Admins have elevated access. Use `requireAdmin()` in API routes to restrict actions (e.g. creating tournaments).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+To promote an existing user to admin, use Prisma Studio: `npx prisma studio` → open `User` → edit the row → set `role` to `admin`.
 
-## Deploy on Vercel
+## Golf Course Autocomplete
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The Home Course field uses a bundled list of Southern California golf courses (from the [SCGA Course Directory](https://newfrontier.scga.org/course-directory)). To refresh the list:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run scrape:courses
+```
+
+This fetches course names from the SCGA directory and updates `src/data/california-golf-courses.json`. Ensure you comply with SCGA's terms of service when running the scraper.
+
+## Project Structure
+
+- `src/app/signup/` – Create account
+- `src/app/signin/` – Sign in
+- `src/app/profile/` – Profile page (requires sign in)
+- `src/app/api/profile/` – Profile API
+- `src/lib/auth.ts` – NextAuth config
+- `src/lib/db.ts` – Prisma client
+- `prisma/schema.prisma` – Database schema

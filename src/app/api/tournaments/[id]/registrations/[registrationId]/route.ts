@@ -1,0 +1,46 @@
+import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+
+/**
+ * PATCH /api/tournaments/[id]/registrations/[registrationId] - Admin confirms payment
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; registrationId: string }> }
+) {
+  const { session, error } = await requireAdmin();
+  if (error) {
+    return NextResponse.json(error.json, { status: error.status });
+  }
+
+  const { id: tournamentId, registrationId } = await params;
+
+  const body = await request.json().catch(() => ({}));
+  const { paymentStatus } = body;
+
+  if (paymentStatus !== "confirmed") {
+    return NextResponse.json(
+      { error: "Invalid status. Use paymentStatus: confirmed" },
+      { status: 400 }
+    );
+  }
+
+  const registration = await prisma.tournamentRegistration.findFirst({
+    where: { id: registrationId, tournamentId },
+  });
+
+  if (!registration) {
+    return NextResponse.json(
+      { error: "Registration not found" },
+      { status: 404 }
+    );
+  }
+
+  await prisma.tournamentRegistration.update({
+    where: { id: registrationId },
+    data: { paymentStatus: "confirmed" },
+  });
+
+  return NextResponse.json({ ok: true });
+}

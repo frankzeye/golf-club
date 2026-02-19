@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  password      String
+  role          String   @default("member")  // "member" | "admin"
+  firstName     String   @default("")
+  lastName      String   @default("")
+  ghinNumber    String?
+  handicapIndex Float?
+  homeCourse    String?
+  imageUrl      String?
+  createdAt     DateTime @default(now())
+  tournamentRegistrations TournamentRegistration[]
+  comments      Comment[]
+}
+
+model Tournament {
+  id             String   @id @default(cuid())
+  name           String
+  date           DateTime
+  course         String
+  scoringFormat  String
+  individualOrTeam String @default("individual")  // "individual" | "team"
+  teamSize       Int?    // 2 or 4 when team
+  availableSpots Int
+  greenFee       Float   @default(0)
+  prizePool      Float   @default(0)
+  clubDonation   Float   @default(0)
+  createdAt      DateTime @default(now())
+  registrations  TournamentRegistration[]
+  comments       Comment[]
+}
+
+model TournamentRegistration {
+  id            String   @id @default(cuid())
+  tournamentId  String
+  userId        String
+  paymentStatus String   @default("unpaid")  // "unpaid" | "pending" | "confirmed"
+  createdAt     DateTime @default(now())
+  tournament    Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([tournamentId, userId])
+}
+
+model Comment {
+  id           String    @id @default(cuid())
+  tournamentId String
+  userId       String
+  parentId     String?   // null = top-level, otherwise reply to parent
+  content      String
+  createdAt    DateTime  @default(now())
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent       Comment?   @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies      Comment[]  @relation("CommentReplies")
+}
