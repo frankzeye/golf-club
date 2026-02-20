@@ -2,8 +2,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { writeFile, unlink, mkdir } from "fs/promises";
-import path from "path";
+import { put, del } from "@vercel/blob";
+import { readFile } from "fs/promises";
 import formidable from "formidable";
 
 export const config = {
@@ -12,7 +12,6 @@ export const config = {
   },
 };
 
-const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "profile");
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -33,12 +32,23 @@ function parseForm(req: NextApiRequest): Promise<{ fields: formidable.Fields; fi
   });
 }
 
+function isBlobUrl(url: string): boolean {
+  return url.startsWith("http") && url.includes("blob.vercel-storage.com");
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    console.error("BLOB_READ_WRITE_TOKEN is not set");
+    return res.status(500).json({
+      error: "File upload is not configured. Please add BLOB_READ_WRITE_TOKEN.",
+    });
   }
 
   const session = await getServerSession(req, res, authOptions);
@@ -66,35 +76,34 @@ export default async function handler(
     }
 
     const ext = mimetype === "image/jpeg" ? "jpg" : mimetype.split("/")[1] || "jpg";
-    const filename = `${session.user.id}.${ext}`;
-    const filepath = path.join(UPLOAD_DIR, filename);
-
-    await mkdir(UPLOAD_DIR, { recursive: true });
+    const pathname = `profile/${session.user.id}.${ext}`;
 
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: { imageUrl: true },
     });
 
-    if (user?.imageUrl) {
-      const oldPath = path.join(process.cwd(), "public", user.imageUrl);
+    if (user?.imageUrl && isBlobUrl(user.imageUrl)) {
       try {
-        await unlink(oldPath);
+        await del(user.imageUrl);
       } catch {
-        // Ignore if old file doesn't exist
+        // Ignore if blob no longer exists
       }
     }
 
-    const fs = await import("fs/promises");
-    await fs.copyFile(file.filepath, filepath);
-
-    const imageUrl = `/uploads/profile/${filename}`;
-    await prisma.user.update({
-      where: { id: session.user.id },
-      data: { imageUrl },
+    const buffer = await readFile(file.filepath);
+    const blob = await put(pathname, buffer, {
+      access: "public",
+      contentType: mimetype,
+      addRandomSuffix: false,
     });
 
-    return res.status(200).json({ imageUrl });
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: { imageUrl: blob.url },
+    });
+
+    return res.status(200).json({ imageUrl: blob.url });
   } catch (error) {
     console.error("Photo upload failed:", error);
     const message = error instanceof Error ? error.message : "Failed to upload photo";

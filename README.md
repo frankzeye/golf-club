@@ -27,6 +27,7 @@ Copy `.env.example` to `.env` and set:
 - `NEXTAUTH_SECRET` – Required for session encryption. Generate with: `openssl rand -base64 32`
 - `NEXTAUTH_URL` – Your app URL (e.g. `http://localhost:3000`)
 - `INITIAL_ADMIN_EMAIL` – (Optional) Comma-separated emails. Users who sign up with these emails get the `admin` role. Example: `admin@club.com,other@club.com`
+- `BLOB_READ_WRITE_TOKEN` – (Optional, for production) Required for profile photo uploads. Create a [Vercel Blob](https://vercel.com/storage/blob) store, then add the token to your environment. Without it, photo uploads will fail.
 
 ## User Roles
 
