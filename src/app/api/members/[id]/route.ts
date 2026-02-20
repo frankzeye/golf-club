@@ -23,11 +23,13 @@ export async function GET(
       id: true,
       firstName: true,
       lastName: true,
+      cellNumber: true,
       ghinNumber: true,
       handicapIndex: true,
       homeCourse: true,
       imageUrl: true,
       role: true,
+      scgaOfficial: true,
       email: true,
       tournamentRegistrations: {
         include: {
@@ -57,7 +59,9 @@ export async function GET(
     homeCourse: user.homeCourse ?? "",
     imageUrl: user.imageUrl,
     role: user.role,
+    scgaOfficial: user.scgaOfficial ?? false,
     email: isAdmin ? user.email : undefined,
+    cellNumber: isAdmin ? user.cellNumber : undefined,
     upcomingTournaments: upcomingRegistrations.map((r) => ({
       id: r.tournament.id,
       name: r.tournament.name,

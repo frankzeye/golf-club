@@ -12,18 +12,19 @@ export default async function Home() {
       <Header />
       <main className="mx-auto flex max-w-4xl flex-1 flex-col items-center justify-center px-4 py-16">
         <div className="text-center">
-          <h2 className="font-serif text-3xl font-semibold text-stone-900 sm:text-4xl">
-            Welcome to your club
-          </h2>
+          <img
+            src="/logo-welcome.png"
+            alt="Spencer's Crossing Golf Club"
+            className="mx-auto max-w-sm sm:max-w-md"
+          />
           <p className="mt-3 max-w-md text-stone-600">
-            Connect with fellow members, manage your handicap, and stay in the
-            loop with club news and events.
+            Create an account in order to register for our next tournament!
           </p>
           <Link
             href={isLoggedIn ? "/profile" : "/signup"}
             className="mt-8 inline-block rounded-lg bg-emerald-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
           >
-            {isLoggedIn ? "My Profile" : "Create an account"}
+            {isLoggedIn ? "My Profile" : "Create Account"}
           </Link>
         </div>
       </main>

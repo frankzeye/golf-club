@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { findTournamentByIdOrSlug } from "@/lib/tournament-resolve";
 
 /**
  * POST /api/tournaments/[id]/register/mark-paid - User marks themselves as paid (sets status to pending)
@@ -15,10 +16,18 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id: tournamentId } = await params;
+  const { id: idOrSlug } = await params;
+
+  const tournament = await findTournamentByIdOrSlug(idOrSlug);
+  if (!tournament) {
+    return NextResponse.json(
+      { error: "Tournament not found" },
+      { status: 404 }
+    );
+  }
 
   const registration = await prisma.tournamentRegistration.findFirst({
-    where: { tournamentId, userId: session.user.id },
+    where: { tournamentId: tournament.id, userId: session.user.id },
     include: { tournament: true },
   });
 

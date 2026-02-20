@@ -6,6 +6,7 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { CourseAutocomplete } from "@/components/CourseAutocomplete";
+import { AvatarWithSash } from "@/components/AvatarWithSash";
 
 const VENMO_USERNAME = "Frank-Eybsen";
 
@@ -30,6 +31,7 @@ interface CommentUser {
   lastName: string;
   fullName: string;
   imageUrl: string | null;
+  scgaOfficial?: boolean;
 }
 
 interface CommentWithReplies {
@@ -52,11 +54,13 @@ interface RegisteredUser {
   lastName: string;
   fullName: string;
   imageUrl: string | null;
+  scgaOfficial?: boolean;
   paymentStatus: string;
 }
 
 interface TournamentDetail {
   id: string;
+  slug?: string;
   name: string;
   date: string;
   course: string;
@@ -754,19 +758,12 @@ export default function TournamentDetailPage() {
                       href={`/members/${u.id}`}
                       className="flex min-w-0 flex-1 items-center gap-2 transition-colors hover:text-emerald-600"
                     >
-                      <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-stone-200">
-                        {u.imageUrl ? (
-                          <img
-                            src={u.imageUrl}
-                            alt={u.fullName}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center text-xs font-medium text-stone-500">
-                            {u.firstName ? u.firstName[0].toUpperCase() : "?"}
-                          </div>
-                        )}
-                      </div>
+                      <AvatarWithSash
+                        imageUrl={u.imageUrl}
+                        alt={u.fullName}
+                        size="md"
+                        fallback={u.firstName ? u.firstName[0].toUpperCase() : "?"}
+                      />
                       <span className="font-medium text-stone-900 truncate">{u.fullName}</span>
                     </Link>
                     <div className="flex shrink-0 items-center gap-2">
@@ -833,15 +830,12 @@ export default function TournamentDetailPage() {
             <div className="mt-6 space-y-4">
               {comments.map((comment) => (
                 <div key={comment.id} className="flex gap-3">
-                  <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-stone-200">
-                    {comment.user.imageUrl ? (
-                      <img src={comment.user.imageUrl} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-xs font-medium text-stone-500">
-                        {comment.user.firstName ? comment.user.firstName[0].toUpperCase() : "?"}
-                      </div>
-                    )}
-                  </div>
+                  <AvatarWithSash
+                    imageUrl={comment.user.imageUrl}
+                    alt={comment.user.fullName}
+                    size="md"
+                    fallback={comment.user.firstName ? comment.user.firstName[0].toUpperCase() : "?"}
+                  />
                   <div className="min-w-0 flex-1">
                     <div className="rounded-lg bg-stone-50 px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -897,15 +891,13 @@ export default function TournamentDetailPage() {
                       <div className="mt-3 space-y-3 border-l-2 border-stone-200 pl-4">
                         {comment.replies.map((reply) => (
                           <div key={reply.id} className="flex gap-2">
-                            <div className="h-6 w-6 shrink-0 overflow-hidden rounded-full bg-stone-200">
-                              {reply.user.imageUrl ? (
-                                <img src={reply.user.imageUrl} alt="" className="h-full w-full object-cover" />
-                              ) : (
-                                <div className="flex h-full w-full items-center justify-center text-[10px] font-medium text-stone-500">
-                                  {reply.user.firstName ? reply.user.firstName[0].toUpperCase() : "?"}
-                                </div>
-                              )}
-                            </div>
+                            <AvatarWithSash
+                              imageUrl={reply.user.imageUrl}
+                              alt={reply.user.fullName}
+                              size="sm"
+                              fallback={reply.user.firstName ? reply.user.firstName[0].toUpperCase() : "?"}
+                              className="h-6 w-6"
+                            />
                             <div className="min-w-0 flex-1 rounded-lg bg-stone-50 px-3 py-2">
                               <div className="flex items-center gap-2">
                                 <Link href={`/members/${reply.user.id}`} className="font-medium text-stone-900 hover:text-emerald-600 text-sm">

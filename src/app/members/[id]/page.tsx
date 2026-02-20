@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/Header";
+import { AvatarWithSash } from "@/components/AvatarWithSash";
 
 interface UpcomingTournament {
   id: string;
@@ -23,7 +24,9 @@ interface MemberDetail {
   homeCourse: string;
   imageUrl: string | null;
   role: string;
+  scgaOfficial?: boolean;
   email?: string;
+  cellNumber?: string | null;
   upcomingTournaments: UpcomingTournament[];
 }
 
@@ -35,7 +38,7 @@ export default function MemberDetailPage() {
   const [member, setMember] = useState<MemberDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  const [isPromoting, setIsPromoting] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -53,25 +56,51 @@ export default function MemberDetailPage() {
       .finally(() => setIsLoading(false));
   }, [status, router, id]);
 
-  const handleMakeAdmin = async () => {
-    if (!member) return;
-    setIsPromoting(true);
+  const handleToggleAdmin = async (checked: boolean) => {
+    if (!member || member.id === session?.user?.id) return;
+    setIsUpdating(true);
     setError("");
     try {
       const res = await fetch(`/api/members/${member.id}/admin`, {
-        method: "POST",
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: checked ? "admin" : "member" }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "Failed to promote");
+        setError(data.error ?? "Failed to update");
         return;
       }
       setError("");
-      setMember((m) => (m ? { ...m, role: "admin" } : null));
+      setMember((m) => (m ? { ...m, role: checked ? "admin" : "member" } : null));
     } catch {
       setError("Something went wrong");
     } finally {
-      setIsPromoting(false);
+      setIsUpdating(false);
+    }
+  };
+
+  const handleToggleScgaOfficial = async (checked: boolean) => {
+    if (!member) return;
+    setIsUpdating(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/members/${member.id}/admin`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scgaOfficial: checked }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Failed to update");
+        return;
+      }
+      setError("");
+      setMember((m) => (m ? { ...m, scgaOfficial: checked } : null));
+    } catch {
+      setError("Something went wrong");
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -86,7 +115,7 @@ export default function MemberDetailPage() {
   };
 
   const isAdmin = session?.user?.role === "admin";
-  const canPromote = isAdmin && member?.role !== "admin" && member?.id !== session?.user?.id;
+  const canEditAdminOptions = isAdmin && member?.id !== session?.user?.id;
 
   if (status === "loading" || (status === "authenticated" && isLoading)) {
     return (
@@ -134,29 +163,28 @@ export default function MemberDetailPage() {
         <div className="mt-6 rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
             <div className="shrink-0">
-              <div className="h-24 w-24 overflow-hidden rounded-full bg-stone-200 ring-2 ring-stone-300">
-                {member.imageUrl ? (
-                  <img
-                    src={member.imageUrl}
-                    alt={member.fullName}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-3xl font-medium text-stone-400">
-                    {member.firstName
-                      ? member.firstName[0].toUpperCase()
-                      : member.lastName
-                        ? member.lastName[0].toUpperCase()
-                        : "?"}
-                  </div>
-                )}
-              </div>
+              <AvatarWithSash
+                imageUrl={member.imageUrl}
+                alt={member.fullName}
+                size="2xl"
+                fallback={
+                  member.firstName
+                    ? member.firstName[0].toUpperCase()
+                    : member.lastName
+                      ? member.lastName[0].toUpperCase()
+                      : "?"
+                }
+                className="ring-2 ring-stone-300"
+              />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="font-serif text-2xl font-semibold text-stone-900">
                   {member.fullName || "—"}
                 </h1>
+                {member.scgaOfficial && (
+                  <span className="text-emerald-600">SCGA Official</span>
+                )}
                 {member.role === "admin" && (
                   <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800">
                     Admin
@@ -165,6 +193,14 @@ export default function MemberDetailPage() {
               </div>
               {member.email && (
                 <p className="mt-1 text-sm text-stone-500">{member.email}</p>
+              )}
+              {isAdmin && member.cellNumber && (
+                <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2">
+                  <p className="text-xs font-medium uppercase tracking-wide text-blue-600">
+                    Admin only · Cell
+                  </p>
+                  <p className="mt-0.5 text-sm text-blue-900">{member.cellNumber}</p>
+                </div>
               )}
               <dl className="mt-4 space-y-2">
                 <div>
@@ -195,16 +231,31 @@ export default function MemberDetailPage() {
               {error && (
                 <p className="mt-4 text-sm text-red-600">{error}</p>
               )}
-              {canPromote && (
-                <div className="mt-6">
-                  <button
-                    type="button"
-                    onClick={handleMakeAdmin}
-                    disabled={isPromoting}
-                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-                  >
-                    {isPromoting ? "Promoting…" : "Make Admin"}
-                  </button>
+              {canEditAdminOptions && (
+                <div className="mt-6 space-y-4 rounded-lg border border-stone-200 bg-stone-50 p-4">
+                  <h3 className="text-sm font-medium text-stone-700">
+                    Admin options
+                  </h3>
+                  <label className="flex cursor-pointer items-center justify-between gap-4">
+                    <span className="text-sm text-stone-700">SCGA Official</span>
+                    <input
+                      type="checkbox"
+                      checked={member.scgaOfficial ?? false}
+                      onChange={(e) => handleToggleScgaOfficial(e.target.checked)}
+                      disabled={isUpdating}
+                      className="h-4 w-4 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500"
+                    />
+                  </label>
+                  <label className="flex cursor-pointer items-center justify-between gap-4">
+                    <span className="text-sm text-stone-700">Make user admin</span>
+                    <input
+                      type="checkbox"
+                      checked={member.role === "admin"}
+                      onChange={(e) => handleToggleAdmin(e.target.checked)}
+                      disabled={isUpdating}
+                      className="h-4 w-4 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500"
+                    />
+                  </label>
                 </div>
               )}
             </div>

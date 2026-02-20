@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { findTournamentByIdOrSlug } from "@/lib/tournament-resolve";
 
 /**
  * GET /api/tournaments/[id]/comments - List comments for a tournament (threaded)
@@ -15,18 +16,15 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id: tournamentId } = await params;
+  const { id: idOrSlug } = await params;
 
-  const tournament = await prisma.tournament.findUnique({
-    where: { id: tournamentId },
-  });
-
+  const tournament = await findTournamentByIdOrSlug(idOrSlug);
   if (!tournament) {
     return NextResponse.json({ error: "Tournament not found" }, { status: 404 });
   }
 
   const comments = await prisma.comment.findMany({
-    where: { tournamentId },
+    where: { tournamentId: tournament.id },
     include: {
       user: {
         select: {
@@ -34,6 +32,7 @@ export async function GET(
           firstName: true,
           lastName: true,
           imageUrl: true,
+          scgaOfficial: true,
         },
       },
       replies: {
@@ -44,6 +43,7 @@ export async function GET(
               firstName: true,
               lastName: true,
               imageUrl: true,
+              scgaOfficial: true,
             },
           },
         },
@@ -64,6 +64,7 @@ export async function GET(
       lastName: c.user.lastName ?? "",
       fullName: [c.user.firstName, c.user.lastName].filter(Boolean).join(" ") || "—",
       imageUrl: c.user.imageUrl,
+      scgaOfficial: c.user.scgaOfficial ?? false,
     },
     replies: c.replies.map((r) => ({
       id: r.id,
@@ -75,6 +76,7 @@ export async function GET(
         lastName: r.user.lastName ?? "",
         fullName: [r.user.firstName, r.user.lastName].filter(Boolean).join(" ") || "—",
         imageUrl: r.user.imageUrl,
+        scgaOfficial: r.user.scgaOfficial ?? false,
       },
     })),
   }));
@@ -94,15 +96,13 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id: tournamentId } = await params;
+  const { id: idOrSlug } = await params;
 
-  const tournament = await prisma.tournament.findUnique({
-    where: { id: tournamentId },
-  });
-
+  const tournament = await findTournamentByIdOrSlug(idOrSlug);
   if (!tournament) {
     return NextResponse.json({ error: "Tournament not found" }, { status: 404 });
   }
+  const tournamentId = tournament.id;
 
   try {
     const body = await request.json();

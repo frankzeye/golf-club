@@ -19,10 +19,12 @@ export async function GET() {
       email: true,
       firstName: true,
       lastName: true,
+      cellNumber: true,
       ghinNumber: true,
       handicapIndex: true,
       homeCourse: true,
       imageUrl: true,
+      scgaOfficial: true,
       tournamentRegistrations: {
         include: {
           tournament: { select: { date: true } },
@@ -52,10 +54,12 @@ export async function GET() {
     ...userData,
     firstName: user.firstName ?? "",
     lastName: user.lastName ?? "",
+    cellNumber: user.cellNumber,
     ghinNumber: user.ghinNumber,
     handicapIndex: user.handicapIndex,
     homeCourse: user.homeCourse,
     imageUrl: user.imageUrl,
+    scgaOfficial: user.scgaOfficial,
     badges,
   });
 }
@@ -71,7 +75,7 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { firstName, lastName, ghinNumber, handicapIndex, homeCourse } = body;
+    const { firstName, lastName, cellNumber, ghinNumber, handicapIndex, homeCourse } = body;
 
     let hi: number | null = null;
     if (handicapIndex != null && handicapIndex !== "") {
@@ -84,6 +88,7 @@ export async function PATCH(request: NextRequest) {
       data: {
         firstName: firstName ?? "",
         lastName: lastName ?? "",
+        cellNumber: cellNumber ?? null,
         ghinNumber: ghinNumber ?? null,
         handicapIndex: hi,
         homeCourse: homeCourse ?? null,
@@ -91,6 +96,7 @@ export async function PATCH(request: NextRequest) {
       select: {
         firstName: true,
         lastName: true,
+        cellNumber: true,
         ghinNumber: true,
         handicapIndex: true,
         homeCourse: true,
@@ -100,6 +106,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({
       firstName: user.firstName ?? "",
       lastName: user.lastName ?? "",
+      cellNumber: user.cellNumber,
       ghinNumber: user.ghinNumber,
       handicapIndex: user.handicapIndex,
       homeCourse: user.homeCourse,

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
+import { AvatarWithSash } from "@/components/AvatarWithSash";
 
 export function Header() {
   const { data: session, status } = useSession();
@@ -57,17 +58,13 @@ export function Header() {
                   aria-expanded={menuOpen}
                   aria-haspopup="true"
                 >
-                  {session.user?.image ? (
-                    <img
-                      src={session.user.image}
-                      alt="Profile"
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-stone-200 text-sm font-medium text-stone-600">
-                      {session.user?.name?.[0]?.toUpperCase() ?? "?"}
-                    </div>
-                  )}
+                  <AvatarWithSash
+                    imageUrl={session.user?.image ?? null}
+                    alt="Profile"
+                    size="md"
+                    fallback={session.user?.name?.[0]?.toUpperCase() ?? "?"}
+                    className="h-full w-full"
+                  />
                 </button>
                 {menuOpen && (
                   <div className="absolute right-0 top-full z-10 mt-2 w-48 rounded-lg border border-stone-200 bg-white py-1 shadow-lg">
@@ -103,7 +100,7 @@ export function Header() {
                 href="/signup"
                 className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
               >
-                Sign up
+                Create Account
               </Link>
             </>
           )}

@@ -55,7 +55,7 @@ export const authOptions: NextAuthOptions = {
         let role = token.role as string | undefined;
         const u = await prisma.user.findUnique({
           where: { id: token.id as string },
-          select: { role: true, imageUrl: true },
+          select: { role: true, imageUrl: true, scgaOfficial: true },
         });
         if (u) {
           if (!role) {
@@ -63,6 +63,7 @@ export const authOptions: NextAuthOptions = {
             token.role = role;
           }
           (session.user as { image?: string | null }).image = u.imageUrl ?? null;
+          (session.user as { scgaOfficial?: boolean }).scgaOfficial = u.scgaOfficial ?? false;
         }
         (session.user as { role?: string }).role = role ?? "member";
       }

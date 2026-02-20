@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions, requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { tournamentSlug, findUniqueSlug } from "@/lib/tournament-slug";
 
 /**
  * GET /api/tournaments - List all tournaments (past and upcoming)
@@ -18,7 +19,7 @@ export async function GET() {
       registrations: {
         include: {
           user: {
-            select: { id: true, firstName: true, lastName: true, imageUrl: true },
+            select: { id: true, firstName: true, lastName: true, imageUrl: true, scgaOfficial: true },
           },
         },
       },
@@ -31,15 +32,18 @@ export async function GET() {
 
   const format = (t: (typeof tournaments)[0]) => {
     const { registrations, ...rest } = t;
+    const slug = t.slug ?? tournamentSlug(t.date, t.name);
     const registeredUsers = registrations.map((r) => ({
       id: r.user.id,
       firstName: r.user.firstName ?? "",
       lastName: r.user.lastName ?? "",
       fullName: [r.user.firstName, r.user.lastName].filter(Boolean).join(" ") || "—",
       imageUrl: r.user.imageUrl,
+      scgaOfficial: r.user.scgaOfficial ?? false,
     }));
     return {
       ...rest,
+      slug,
       registeredCount: registrations.length,
       isRegistered: registrations.some((r) => r.userId === session.user.id),
       registeredUsers,
@@ -118,10 +122,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const dateObj = new Date(date);
+    const baseSlug = tournamentSlug(dateObj, name.trim());
+    const slug = await findUniqueSlug(baseSlug);
+
     const tournament = await prisma.tournament.create({
       data: {
         name: name.trim(),
-        date: new Date(date),
+        slug,
+        date: dateObj,
         course: course.trim(),
         scoringFormat: scoringFormat.trim(),
         individualOrTeam: type,

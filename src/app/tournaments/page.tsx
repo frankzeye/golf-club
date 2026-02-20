@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { CourseAutocomplete } from "@/components/CourseAutocomplete";
+import { AvatarWithSash } from "@/components/AvatarWithSash";
 
 const SCORING_FORMATS = [
   "Stroke Play",
@@ -28,10 +29,12 @@ interface RegisteredUser {
   lastName: string;
   fullName: string;
   imageUrl: string | null;
+  scgaOfficial?: boolean;
 }
 
 interface Tournament {
   id: string;
+  slug: string;
   name: string;
   date: string;
   course: string;
@@ -404,7 +407,7 @@ export default function TournamentsPage() {
                 {upcoming.map((t) => (
                   <Link
                     key={t.id}
-                    href={`/tournaments/${t.id}`}
+                    href={`/tournaments/${t.slug ?? t.id}`}
                     className="block rounded-xl border border-stone-200 bg-white p-5 shadow-sm transition-colors hover:border-stone-300 hover:shadow-md"
                   >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -436,22 +439,14 @@ export default function TournamentsPage() {
                         {(t.registeredUsers ?? []).length > 0 && (
                           <div className="mt-4 flex -space-x-2" title={(t.registeredUsers ?? []).map((u) => u.fullName).join(", ")}>
                             {(t.registeredUsers ?? []).map((u) => (
-                              <div
+                              <AvatarWithSash
                                 key={u.id}
-                                className="h-7 w-7 overflow-hidden rounded-full border-2 border-white bg-stone-200 ring-2 ring-stone-200"
-                              >
-                                {u.imageUrl ? (
-                                  <img
-                                    src={u.imageUrl}
-                                    alt={u.fullName}
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="flex h-full w-full items-center justify-center text-[10px] font-medium text-stone-500">
-                                    {u.firstName ? u.firstName[0].toUpperCase() : "?"}
-                                  </div>
-                                )}
-                              </div>
+                                imageUrl={u.imageUrl}
+                                alt={u.fullName}
+                                size="sm"
+                                fallback={u.firstName ? u.firstName[0].toUpperCase() : "?"}
+                                className="h-7 w-7 border-2 border-white ring-2 ring-stone-200"
+                              />
                             ))}
                           </div>
                         )}
@@ -476,7 +471,7 @@ export default function TournamentsPage() {
                 {past.map((t) => (
                   <Link
                     key={t.id}
-                    href={`/tournaments/${t.id}`}
+                    href={`/tournaments/${t.slug ?? t.id}`}
                     className="block rounded-xl border border-stone-200 bg-white p-5 shadow-sm transition-colors hover:border-stone-300 hover:shadow-md"
                   >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -508,22 +503,14 @@ export default function TournamentsPage() {
                         {(t.registeredUsers ?? []).length > 0 && (
                           <div className="mt-4 flex -space-x-2" title={(t.registeredUsers ?? []).map((u) => u.fullName).join(", ")}>
                             {(t.registeredUsers ?? []).map((u) => (
-                              <div
+                              <AvatarWithSash
                                 key={u.id}
-                                className="h-7 w-7 overflow-hidden rounded-full border-2 border-white bg-stone-200 ring-2 ring-stone-200"
-                              >
-                                {u.imageUrl ? (
-                                  <img
-                                    src={u.imageUrl}
-                                    alt={u.fullName}
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="flex h-full w-full items-center justify-center text-[10px] font-medium text-stone-500">
-                                    {u.firstName ? u.firstName[0].toUpperCase() : "?"}
-                                  </div>
-                                )}
-                              </div>
+                                imageUrl={u.imageUrl}
+                                alt={u.fullName}
+                                size="sm"
+                                fallback={u.firstName ? u.firstName[0].toUpperCase() : "?"}
+                                className="h-7 w-7 border-2 border-white ring-2 ring-stone-200"
+                              />
                             ))}
                           </div>
                         )}

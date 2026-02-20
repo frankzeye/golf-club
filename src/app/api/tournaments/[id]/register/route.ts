@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { findTournamentByIdOrSlug } from "@/lib/tournament-resolve";
 
 /**
  * POST /api/tournaments/[id]/register - Register for a tournament
@@ -15,25 +16,30 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id: tournamentId } = await params;
+  const { id: idOrSlug } = await params;
 
-  const tournament = await prisma.tournament.findUnique({
-    where: { id: tournamentId },
-    include: { _count: { select: { registrations: true } } },
-  });
-
+  const tournament = await findTournamentByIdOrSlug(idOrSlug);
   if (!tournament) {
     return NextResponse.json({ error: "Tournament not found" }, { status: 404 });
   }
 
-  if (tournament.date < new Date()) {
+  const tournamentWithCount = await prisma.tournament.findUnique({
+    where: { id: tournament.id },
+    include: { _count: { select: { registrations: true } } },
+  });
+  if (!tournamentWithCount) {
+    return NextResponse.json({ error: "Tournament not found" }, { status: 404 });
+  }
+  const tournamentId = tournamentWithCount.id;
+
+  if (tournamentWithCount.date < new Date()) {
     return NextResponse.json(
       { error: "Cannot register for past tournaments" },
       { status: 400 }
     );
   }
 
-  if (tournament._count.registrations >= tournament.availableSpots) {
+  if (tournamentWithCount._count.registrations >= tournamentWithCount.availableSpots) {
     return NextResponse.json(
       { error: "Tournament is full" },
       { status: 400 }
@@ -41,9 +47,9 @@ export async function POST(
   }
 
   const totalBuyIn =
-    (tournament.greenFee ?? 0) +
-    (tournament.prizePool ?? 0) +
-    (tournament.clubDonation ?? 0);
+    (tournamentWithCount.greenFee ?? 0) +
+    (tournamentWithCount.prizePool ?? 0) +
+    (tournamentWithCount.clubDonation ?? 0);
   const paymentStatus = totalBuyIn > 0 ? "unpaid" : "confirmed";
 
   try {
@@ -83,12 +89,9 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id: tournamentId } = await params;
+  const { id: idOrSlug } = await params;
 
-  const tournament = await prisma.tournament.findUnique({
-    where: { id: tournamentId },
-  });
-
+  const tournament = await findTournamentByIdOrSlug(idOrSlug);
   if (!tournament) {
     return NextResponse.json({ error: "Tournament not found" }, { status: 404 });
   }
@@ -101,7 +104,7 @@ export async function DELETE(
   }
 
   await prisma.tournamentRegistration.deleteMany({
-    where: { tournamentId, userId: session.user.id },
+    where: { tournamentId: tournament.id, userId: session.user.id },
   });
 
   return NextResponse.json({ ok: true });

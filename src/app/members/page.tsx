@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/Header";
+import { AvatarWithSash } from "@/components/AvatarWithSash";
 
 interface Member {
   id: string;
@@ -14,6 +15,7 @@ interface Member {
   handicapIndex: number | null;
   homeCourse: string;
   imageUrl: string | null;
+  scgaOfficial?: boolean;
 }
 
 export default function MembersPage() {
@@ -68,26 +70,25 @@ export default function MembersPage() {
               href={`/members/${member.id}`}
               className="flex items-center gap-4 rounded-xl border border-stone-200 bg-white p-4 shadow-sm transition-colors hover:bg-stone-50"
             >
-              <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-stone-200 ring-2 ring-stone-200">
-                {member.imageUrl ? (
-                  <img
-                    src={member.imageUrl}
-                    alt={member.fullName}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-lg font-medium text-stone-400">
-                    {member.firstName
-                      ? member.firstName[0].toUpperCase()
-                      : member.lastName
-                        ? member.lastName[0].toUpperCase()
-                        : "?"}
-                  </div>
-                )}
-              </div>
+              <AvatarWithSash
+                imageUrl={member.imageUrl}
+                alt={member.fullName}
+                size="xl"
+                fallback={
+                  member.firstName
+                    ? member.firstName[0].toUpperCase()
+                    : member.lastName
+                      ? member.lastName[0].toUpperCase()
+                      : "?"
+                }
+                className="ring-2 ring-stone-200"
+              />
               <div className="min-w-0 flex-1">
-                <p className="truncate font-medium text-stone-900">
-                  {member.fullName || "—"}
+                <p className="flex flex-wrap items-center gap-x-1.5 font-medium text-stone-900">
+                  <span className="truncate">{member.fullName || "—"}</span>
+                  {member.scgaOfficial && (
+                    <span className="shrink-0 text-emerald-600">SCGA Official</span>
+                  )}
                 </p>
                 <p className="text-sm text-stone-500">
                   Handicap:{" "}
@@ -95,11 +96,6 @@ export default function MembersPage() {
                     ? member.handicapIndex
                     : "—"}
                 </p>
-                {member.homeCourse && (
-                  <p className="text-sm text-stone-500 truncate" title={member.homeCourse}>
-                    {member.homeCourse}
-                  </p>
-                )}
               </div>
             </Link>
           ))}

@@ -5,10 +5,12 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { CourseAutocomplete } from "@/components/CourseAutocomplete";
+import { AvatarWithSash } from "@/components/AvatarWithSash";
 
 interface ProfileForm {
   firstName: string;
   lastName: string;
+  cellNumber: string;
   ghinNumber: string;
   handicapIndex: string;
   homeCourse: string;
@@ -22,11 +24,12 @@ interface Badge {
 }
 
 export default function ProfilePage() {
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
   const router = useRouter();
   const [form, setForm] = useState<ProfileForm>({
     firstName: "",
     lastName: "",
+    cellNumber: "",
     ghinNumber: "",
     handicapIndex: "",
     homeCourse: "",
@@ -34,7 +37,9 @@ export default function ProfilePage() {
   });
   const [saved, setSaved] = useState<ProfileForm | null>(null);
   const [badges, setBadges] = useState<Badge[]>([]);
+  const [scgaOfficial, setScgaOfficial] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUpdatingAdmin, setIsUpdatingAdmin] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -51,6 +56,7 @@ export default function ProfilePage() {
         setForm({
           firstName: data.firstName ?? "",
           lastName: data.lastName ?? "",
+          cellNumber: data.cellNumber ?? "",
           ghinNumber: data.ghinNumber ?? "",
           handicapIndex: hi != null && hi !== "" ? String(hi) : "",
           homeCourse: data.homeCourse ?? "",
@@ -59,12 +65,14 @@ export default function ProfilePage() {
         setSaved({
           firstName: data.firstName ?? "",
           lastName: data.lastName ?? "",
+          cellNumber: data.cellNumber ?? "",
           ghinNumber: data.ghinNumber ?? "",
           handicapIndex: hi != null && hi !== "" ? String(hi) : "",
           homeCourse: data.homeCourse ?? "",
           imageUrl: data.imageUrl ?? null,
         });
         setBadges(data.badges ?? []);
+        setScgaOfficial(data.scgaOfficial ?? false);
       })
       .catch(() => {})
       .finally(() => setIsLoading(false));
@@ -88,6 +96,7 @@ export default function ProfilePage() {
         body: JSON.stringify({
           firstName: form.firstName.trim(),
           lastName: form.lastName.trim(),
+          cellNumber: form.cellNumber.trim() || null,
           ghinNumber: form.ghinNumber.trim() || null,
           handicapIndex: hiNum != null && !Number.isNaN(hiNum) ? hiNum : null,
           homeCourse: form.homeCourse.trim() || null,
@@ -100,6 +109,7 @@ export default function ProfilePage() {
         ...prev,
         firstName: data.firstName ?? "",
         lastName: data.lastName ?? "",
+        cellNumber: data.cellNumber ?? "",
         ghinNumber: data.ghinNumber ?? "",
         handicapIndex: hiVal != null && hiVal !== "" ? String(hiVal) : "",
         homeCourse: data.homeCourse ?? "",
@@ -114,9 +124,32 @@ export default function ProfilePage() {
   const hasChanges =
     form.firstName !== (saved?.firstName ?? "") ||
     form.lastName !== (saved?.lastName ?? "") ||
+    form.cellNumber !== (saved?.cellNumber ?? "") ||
     form.ghinNumber !== (saved?.ghinNumber ?? "") ||
     form.handicapIndex !== (saved?.handicapIndex ?? "") ||
     form.homeCourse !== (saved?.homeCourse ?? "");
+
+  const handleToggleScgaOfficial = async (checked: boolean) => {
+    if (!session?.user?.id) return;
+    setIsUpdatingAdmin(true);
+    try {
+      const res = await fetch(`/api/members/${session.user.id}/admin`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scgaOfficial: checked }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error ?? "Failed to update");
+        return;
+      }
+      setScgaOfficial(checked);
+    } catch {
+      alert("Failed to update");
+    } finally {
+      setIsUpdatingAdmin(false);
+    }
+  };
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -137,6 +170,7 @@ export default function ProfilePage() {
       const data = await res.json();
       setForm((prev) => ({ ...prev, imageUrl: data.imageUrl }));
       setSaved((prev) => prev ? { ...prev, imageUrl: data.imageUrl } : null);
+      await update(); // Refetch session so header thumbnail updates
     } catch {
       alert("Upload failed");
     } finally {
@@ -187,23 +221,19 @@ export default function ProfilePage() {
           </label>
           <div className="flex items-center gap-4">
             <div className="relative">
-              <div className="h-24 w-24 overflow-hidden rounded-full bg-stone-200 ring-2 ring-stone-300">
-                {form.imageUrl ? (
-                  <img
-                    src={form.imageUrl}
-                    alt="Profile"
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-2xl font-medium text-stone-400">
-                    {form.firstName
-                      ? form.firstName[0].toUpperCase()
-                      : form.lastName
-                        ? form.lastName[0].toUpperCase()
-                        : "?"}
-                  </div>
-                )}
-              </div>
+              <AvatarWithSash
+                imageUrl={form.imageUrl}
+                alt="Profile"
+                size="2xl"
+                fallback={
+                  form.firstName
+                    ? form.firstName[0].toUpperCase()
+                    : form.lastName
+                      ? form.lastName[0].toUpperCase()
+                      : "?"
+                }
+                className="ring-2 ring-stone-300"
+              />
               {isUploading && (
                 <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40">
                   <div className="h-6 w-6 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -267,6 +297,24 @@ export default function ProfilePage() {
               className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 placeholder-stone-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               placeholder="Smith"
               autoComplete="family-name"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="cellNumber"
+              className="block text-sm font-medium text-stone-700"
+            >
+              Cell Number
+            </label>
+            <input
+              id="cellNumber"
+              type="tel"
+              value={form.cellNumber}
+              onChange={handleChange("cellNumber")}
+              className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 placeholder-stone-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              placeholder="e.g. (555) 123-4567"
+              autoComplete="tel"
             />
           </div>
 
@@ -358,6 +406,34 @@ export default function ProfilePage() {
               ))}
             </div>
           </div>
+
+          {session?.user?.role === "admin" && (
+            <div className="space-y-4 rounded-lg border border-stone-200 bg-stone-50 p-4">
+              <h3 className="text-sm font-medium text-stone-700">
+                Admin options
+              </h3>
+              <label className="flex cursor-pointer items-center justify-between gap-4">
+                <span className="text-sm text-stone-700">SCGA Official</span>
+                <input
+                  type="checkbox"
+                  checked={scgaOfficial}
+                  onChange={(e) => handleToggleScgaOfficial(e.target.checked)}
+                  disabled={isUpdatingAdmin}
+                  className="h-4 w-4 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500"
+                />
+              </label>
+              <label className="flex cursor-pointer items-center justify-between gap-4">
+                <span className="text-sm text-stone-700">Admin</span>
+                <input
+                  type="checkbox"
+                  checked={true}
+                  disabled
+                  title="Your admin status cannot be changed here"
+                  className="h-4 w-4 rounded border-stone-300 text-emerald-600"
+                />
+              </label>
+            </div>
+          )}
 
           <div className="flex items-center justify-between border-t border-stone-200 pt-6">
             <p className="text-sm text-stone-500">

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions, requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { findTournamentByIdOrSlug } from "@/lib/tournament-resolve";
+import { tournamentSlug, findUniqueSlug } from "@/lib/tournament-slug";
 
 /**
  * GET /api/tournaments/[id] - Get a single tournament's details
@@ -15,10 +17,15 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id } = await params;
+  const { id: idOrSlug } = await params;
 
-  const tournament = await prisma.tournament.findUnique({
-    where: { id },
+  const tournament = await findTournamentByIdOrSlug(idOrSlug);
+  if (!tournament) {
+    return NextResponse.json({ error: "Tournament not found" }, { status: 404 });
+  }
+
+  const tournamentWithReg = await prisma.tournament.findUnique({
+    where: { id: tournament.id },
     include: {
       registrations: {
         include: {
@@ -28,34 +35,36 @@ export async function GET(
               firstName: true,
               lastName: true,
               imageUrl: true,
+              scgaOfficial: true,
             },
           },
         },
       },
     },
   });
-
-  if (!tournament) {
+  if (!tournamentWithReg) {
     return NextResponse.json({ error: "Tournament not found" }, { status: 404 });
   }
 
-  const myRegistration = tournament.registrations.find(
+  const t = tournamentWithReg;
+  const myRegistration = t.registrations.find(
     (r) => r.userId === session.user.id
   );
 
-  const registeredUsers = tournament.registrations.map((r) => ({
+  const registeredUsers = t.registrations.map((r) => ({
     id: r.user.id,
     registrationId: r.id,
     firstName: r.user.firstName ?? "",
     lastName: r.user.lastName ?? "",
     fullName: [r.user.firstName, r.user.lastName].filter(Boolean).join(" ") || "—",
     imageUrl: r.user.imageUrl,
+    scgaOfficial: r.user.scgaOfficial ?? false,
     paymentStatus: r.paymentStatus,
   }));
 
-  const t = tournament;
   return NextResponse.json({
     id: t.id,
+    slug: t.slug ?? tournamentSlug(t.date, t.name),
     name: t.name,
     date: t.date,
     course: t.course,
@@ -85,12 +94,9 @@ export async function PATCH(
     return NextResponse.json(error.json, { status: error.status });
   }
 
-  const { id } = await params;
+  const { id: idOrSlug } = await params;
 
-  const tournament = await prisma.tournament.findUnique({
-    where: { id },
-  });
-
+  const tournament = await findTournamentByIdOrSlug(idOrSlug);
   if (!tournament) {
     return NextResponse.json({ error: "Tournament not found" }, { status: 404 });
   }
@@ -156,8 +162,15 @@ export async function PATCH(
       if (cd >= 0 && Number.isFinite(cd)) updates.clubDonation = cd;
     }
 
+    if (updates.name != null || updates.date != null) {
+      const name = (updates.name as string) ?? tournament.name;
+      const date = updates.date ? new Date(updates.date as string) : tournament.date;
+      const baseSlug = tournamentSlug(date, name);
+      updates.slug = await findUniqueSlug(baseSlug, tournament.id);
+    }
+
     const updated = await prisma.tournament.update({
-      where: { id },
+      where: { id: tournament.id },
       data: updates,
     });
 
@@ -183,18 +196,15 @@ export async function DELETE(
     return NextResponse.json(error.json, { status: error.status });
   }
 
-  const { id } = await params;
+  const { id: idOrSlug } = await params;
 
-  const tournament = await prisma.tournament.findUnique({
-    where: { id },
-  });
-
+  const tournament = await findTournamentByIdOrSlug(idOrSlug);
   if (!tournament) {
     return NextResponse.json({ error: "Tournament not found" }, { status: 404 });
   }
 
   await prisma.tournament.delete({
-    where: { id },
+    where: { id: tournament.id },
   });
 
   return NextResponse.json({ ok: true });

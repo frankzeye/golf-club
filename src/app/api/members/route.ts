@@ -21,6 +21,7 @@ export async function GET() {
       handicapIndex: true,
       homeCourse: true,
       imageUrl: true,
+      scgaOfficial: true,
     },
   });
 
@@ -32,6 +33,7 @@ export async function GET() {
     handicapIndex: u.handicapIndex,
     homeCourse: u.homeCourse ?? "",
     imageUrl: u.imageUrl,
+    scgaOfficial: u.scgaOfficial ?? false,
   }));
 
   return NextResponse.json(members);

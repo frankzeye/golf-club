@@ -29,7 +29,7 @@ function SignInForm() {
         setError("Invalid email or password");
         return;
       }
-      const callbackUrl = searchParams?.get("callbackUrl") || "/profile";
+      const callbackUrl = searchParams?.get("callbackUrl") || (created ? "/profile" : "/tournaments");
       router.push(callbackUrl);
       router.refresh();
     } catch {

@@ -95,7 +95,8 @@ export default async function handler(
     const blob = await put(pathname, buffer, {
       access: "public",
       contentType: mimetype,
-      addRandomSuffix: false,
+      addRandomSuffix: true,  // Unique URL per upload avoids browser cache when switching photos
+      allowOverwrite: true,
     });
 
     await prisma.user.update({

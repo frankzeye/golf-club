@@ -7,10 +7,10 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "node scripts/use-pg-schema.js && prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma generate",
+    "postinstall": "node scripts/use-pg-schema.js && prisma generate",
     "db:push": "prisma db push",
     "scrape:courses": "node scripts/scrape-scga-courses.mjs"
   },

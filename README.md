@@ -12,6 +12,10 @@ A social platform for your golf club. Create an account with your email, sign in
 
 **Requires Node.js 18.17.0 or later.**
 
+### Local development
+
+Local development uses SQLite (no Docker required). Production (e.g. Railway) uses PostgreSQL.
+
 ```bash
 npm install
 npm run db:push    # Create the SQLite database (first time only)

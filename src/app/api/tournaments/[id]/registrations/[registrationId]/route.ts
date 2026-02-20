@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { findTournamentByIdOrSlug } from "@/lib/tournament-resolve";
 
 /**
  * PATCH /api/tournaments/[id]/registrations/[registrationId] - Admin confirms payment
@@ -14,7 +15,15 @@ export async function PATCH(
     return NextResponse.json(error.json, { status: error.status });
   }
 
-  const { id: tournamentId, registrationId } = await params;
+  const { id: idOrSlug, registrationId } = await params;
+
+  const tournament = await findTournamentByIdOrSlug(idOrSlug);
+  if (!tournament) {
+    return NextResponse.json(
+      { error: "Tournament not found" },
+      { status: 404 }
+    );
+  }
 
   const body = await request.json().catch(() => ({}));
   const { paymentStatus } = body;
@@ -27,7 +36,7 @@ export async function PATCH(
   }
 
   const registration = await prisma.tournamentRegistration.findFirst({
-    where: { id: registrationId, tournamentId },
+    where: { id: registrationId, tournamentId: tournament.id },
   });
 
   if (!registration) {

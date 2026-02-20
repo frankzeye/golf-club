@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -14,10 +14,12 @@ model User {
   role          String   @default("member")  // "member" | "admin"
   firstName     String   @default("")
   lastName      String   @default("")
+  cellNumber    String?
   ghinNumber    String?
   handicapIndex Float?
   homeCourse    String?
   imageUrl      String?
+  scgaOfficial  Boolean  @default(false)
   createdAt     DateTime @default(now())
   tournamentRegistrations TournamentRegistration[]
   comments      Comment[]
@@ -25,6 +27,7 @@ model User {
 
 model Tournament {
   id             String   @id @default(cuid())
+  slug           String?  @unique
   name           String
   date           DateTime
   course         String
