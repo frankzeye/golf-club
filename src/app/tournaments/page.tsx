@@ -69,6 +69,9 @@ export default function TournamentsPage() {
     greenFee: "",
     prizePool: "",
     clubDonation: "",
+    paymentMethod: "" as "" | "venmo" | "cash",
+    venmoUsername: "",
+    prizes: [] as { name: string; amount: string }[],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -116,6 +119,11 @@ export default function TournamentsPage() {
           greenFee: parseFloat(form.greenFee) || 0,
           prizePool: parseFloat(form.prizePool) || 0,
           clubDonation: parseFloat(form.clubDonation) || 0,
+          paymentMethod: form.paymentMethod || null,
+          venmoUsername: form.paymentMethod === "venmo" ? form.venmoUsername : null,
+          prizes: form.prizes
+            .filter((p) => p.name.trim() && p.amount.trim())
+            .map((p) => ({ name: p.name.trim(), amount: parseFloat(p.amount) || 0 })),
         }),
       });
       const data = await res.json();
@@ -134,6 +142,9 @@ export default function TournamentsPage() {
         greenFee: "",
         prizePool: "",
         clubDonation: "",
+        paymentMethod: "",
+        venmoUsername: "",
+        prizes: [],
       });
       setShowForm(false);
       loadTournaments();
@@ -384,6 +395,118 @@ export default function TournamentsPage() {
                     placeholder="0"
                     className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700">
+                  Payment Options
+                </label>
+                <div className="mt-2 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm((p) => ({
+                        ...p,
+                        paymentMethod: p.paymentMethod === "venmo" ? "" : "venmo",
+                      }))
+                    }
+                    className={`rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${
+                      form.paymentMethod === "venmo"
+                        ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                        : "border-stone-300 text-stone-600 hover:bg-stone-50"
+                    }`}
+                  >
+                    Venmo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm((p) => ({
+                        ...p,
+                        paymentMethod: p.paymentMethod === "cash" ? "" : "cash",
+                      }))
+                    }
+                    className={`rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${
+                      form.paymentMethod === "cash"
+                        ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                        : "border-stone-300 text-stone-600 hover:bg-stone-50"
+                    }`}
+                  >
+                    Cash
+                  </button>
+                </div>
+                {form.paymentMethod === "venmo" && (
+                  <div className="mt-3">
+                    <label className="block text-sm font-medium text-stone-700">
+                      Venmo Username
+                    </label>
+                    <input
+                      type="text"
+                      value={form.venmoUsername}
+                      onChange={(e) =>
+                        setForm((p) => ({ ...p, venmoUsername: e.target.value }))
+                      }
+                      placeholder="@username"
+                      className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700">
+                  Prizes
+                </label>
+                <div className="mt-2 space-y-2">
+                  {form.prizes.map((prize, idx) => (
+                    <div key={idx} className="flex gap-2">
+                      <input
+                        type="text"
+                        value={prize.name}
+                        onChange={(e) => {
+                          const updated = [...form.prizes];
+                          updated[idx] = { ...updated[idx], name: e.target.value };
+                          setForm((p) => ({ ...p, prizes: updated }));
+                        }}
+                        placeholder="Prize name (e.g., 1st Place)"
+                        className="flex-1 rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={prize.amount}
+                        onChange={(e) => {
+                          const updated = [...form.prizes];
+                          updated[idx] = { ...updated[idx], amount: e.target.value };
+                          setForm((p) => ({ ...p, prizes: updated }));
+                        }}
+                        placeholder="Amount"
+                        className="w-28 rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = form.prizes.filter((_, i) => i !== idx);
+                          setForm((p) => ({ ...p, prizes: updated }));
+                        }}
+                        className="rounded-lg border border-stone-300 px-3 py-2.5 text-stone-500 hover:bg-stone-50 hover:text-stone-700"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm((p) => ({
+                        ...p,
+                        prizes: [...p.prizes, { name: "", amount: "" }],
+                      }))
+                    }
+                    className="rounded-lg border border-dashed border-stone-300 px-4 py-2.5 text-sm text-stone-600 hover:border-stone-400 hover:text-stone-700"
+                  >
+                    + Add Prize
+                  </button>
                 </div>
               </div>
               <button

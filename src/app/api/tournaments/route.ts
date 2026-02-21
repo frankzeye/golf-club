@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, date, course, scoringFormat, individualOrTeam, teamSize, availableSpots, greenFee, prizePool, clubDonation } = body;
+    const { name, date, course, scoringFormat, individualOrTeam, teamSize, availableSpots, greenFee, prizePool, clubDonation, paymentMethod, venmoUsername, prizes } = body;
 
     if (!name || typeof name !== "string" || name.trim().length === 0) {
       return NextResponse.json(
@@ -139,6 +139,9 @@ export async function POST(request: NextRequest) {
         greenFee: gf,
         prizePool: pp,
         clubDonation: cd,
+        paymentMethod: paymentMethod === "venmo" || paymentMethod === "cash" ? paymentMethod : null,
+        venmoUsername: paymentMethod === "venmo" && venmoUsername ? venmoUsername.trim() : null,
+        prizes: Array.isArray(prizes) ? JSON.stringify(prizes) : null,
       },
     });
 

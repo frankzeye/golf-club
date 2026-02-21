@@ -38,6 +38,9 @@ model Tournament {
   greenFee       Float   @default(0)
   prizePool      Float   @default(0)
   clubDonation   Float   @default(0)
+  paymentMethod  String?  // "venmo" | "cash"
+  venmoUsername  String?
+  prizes         String?  // JSON array: [{ name: string, amount: number }]
   createdAt      DateTime @default(now())
   registrations  TournamentRegistration[]
   comments       Comment[]

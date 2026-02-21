@@ -8,8 +8,6 @@ import { Header } from "@/components/Header";
 import { CourseAutocomplete } from "@/components/CourseAutocomplete";
 import { AvatarWithSash } from "@/components/AvatarWithSash";
 
-const VENMO_USERNAME = "Frank-Eybsen";
-
 const SCORING_FORMATS = [
   "Stroke Play",
   "Stableford",
@@ -58,6 +56,11 @@ interface RegisteredUser {
   paymentStatus: string;
 }
 
+interface Prize {
+  name: string;
+  amount: number;
+}
+
 interface TournamentDetail {
   id: string;
   slug?: string;
@@ -71,6 +74,9 @@ interface TournamentDetail {
   greenFee: number;
   prizePool: number;
   clubDonation: number;
+  paymentMethod: string | null;
+  venmoUsername: string | null;
+  prizes: Prize[];
   registeredCount: number;
   isRegistered: boolean;
   myPaymentStatus: string | null;
@@ -106,6 +112,9 @@ export default function TournamentDetailPage() {
     greenFee: "",
     prizePool: "",
     clubDonation: "",
+    paymentMethod: "" as "" | "venmo" | "cash",
+    venmoUsername: "",
+    prizes: [] as { name: string; amount: string }[],
   });
 
   const loadComments = useCallback(() => {
@@ -141,6 +150,9 @@ export default function TournamentDetailPage() {
           greenFee: data.greenFee != null ? String(data.greenFee) : "",
           prizePool: data.prizePool != null ? String(data.prizePool) : "",
           clubDonation: data.clubDonation != null ? String(data.clubDonation) : "",
+          paymentMethod: (data.paymentMethod === "venmo" || data.paymentMethod === "cash") ? data.paymentMethod : "",
+          venmoUsername: data.venmoUsername ?? "",
+          prizes: (data.prizes || []).map((p: Prize) => ({ name: p.name, amount: String(p.amount) })),
         });
       })
       .catch(() => setError("Tournament not found"))
@@ -189,10 +201,11 @@ export default function TournamentDetailPage() {
   const handleRegister = async () => {
     if (!tournament) return;
     const totalBuyIn = (tournament.greenFee ?? 0) + (tournament.prizePool ?? 0) + (tournament.clubDonation ?? 0);
-    if (totalBuyIn > 0) {
+    if (totalBuyIn > 0 && tournament.paymentMethod === "venmo" && tournament.venmoUsername) {
       const note = encodeURIComponent(`${tournament.name} - buy-in`);
+      const venmoUser = tournament.venmoUsername.replace(/^@/, "");
       window.open(
-        `https://venmo.com/${VENMO_USERNAME}?txn=pay&amount=${totalBuyIn.toFixed(2)}&note=${note}`,
+        `https://venmo.com/${venmoUser}?txn=pay&amount=${totalBuyIn.toFixed(2)}&note=${note}`,
         "_blank",
         "noopener,noreferrer"
       );
@@ -235,6 +248,11 @@ export default function TournamentDetailPage() {
           greenFee: parseFloat(editForm.greenFee) || 0,
           prizePool: parseFloat(editForm.prizePool) || 0,
           clubDonation: parseFloat(editForm.clubDonation) || 0,
+          paymentMethod: editForm.paymentMethod || null,
+          venmoUsername: editForm.paymentMethod === "venmo" ? editForm.venmoUsername : null,
+          prizes: editForm.prizes
+            .filter((p) => p.name.trim() && p.amount.trim())
+            .map((p) => ({ name: p.name.trim(), amount: parseFloat(p.amount) || 0 })),
         }),
       });
       if (!res.ok) {
@@ -584,6 +602,110 @@ export default function TournamentDetailPage() {
                   />
                 </div>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700">Payment Options</label>
+                <div className="mt-2 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setEditForm((p) => ({
+                        ...p,
+                        paymentMethod: p.paymentMethod === "venmo" ? "" : "venmo",
+                      }))
+                    }
+                    className={`rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${
+                      editForm.paymentMethod === "venmo"
+                        ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                        : "border-stone-300 text-stone-600 hover:bg-stone-50"
+                    }`}
+                  >
+                    Venmo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setEditForm((p) => ({
+                        ...p,
+                        paymentMethod: p.paymentMethod === "cash" ? "" : "cash",
+                      }))
+                    }
+                    className={`rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${
+                      editForm.paymentMethod === "cash"
+                        ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                        : "border-stone-300 text-stone-600 hover:bg-stone-50"
+                    }`}
+                  >
+                    Cash
+                  </button>
+                </div>
+                {editForm.paymentMethod === "venmo" && (
+                  <div className="mt-3">
+                    <label className="block text-sm font-medium text-stone-700">Venmo Username</label>
+                    <input
+                      type="text"
+                      value={editForm.venmoUsername}
+                      onChange={(e) => setEditForm((p) => ({ ...p, venmoUsername: e.target.value }))}
+                      placeholder="@username"
+                      className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700">Prizes</label>
+                <div className="mt-2 space-y-2">
+                  {editForm.prizes.map((prize, idx) => (
+                    <div key={idx} className="flex gap-2">
+                      <input
+                        type="text"
+                        value={prize.name}
+                        onChange={(e) => {
+                          const updated = [...editForm.prizes];
+                          updated[idx] = { ...updated[idx], name: e.target.value };
+                          setEditForm((p) => ({ ...p, prizes: updated }));
+                        }}
+                        placeholder="Prize name (e.g., 1st Place)"
+                        className="flex-1 rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={prize.amount}
+                        onChange={(e) => {
+                          const updated = [...editForm.prizes];
+                          updated[idx] = { ...updated[idx], amount: e.target.value };
+                          setEditForm((p) => ({ ...p, prizes: updated }));
+                        }}
+                        placeholder="Amount"
+                        className="w-28 rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = editForm.prizes.filter((_, i) => i !== idx);
+                          setEditForm((p) => ({ ...p, prizes: updated }));
+                        }}
+                        className="rounded-lg border border-stone-300 px-3 py-2.5 text-stone-500 hover:bg-stone-50 hover:text-stone-700"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setEditForm((p) => ({
+                        ...p,
+                        prizes: [...p.prizes, { name: "", amount: "" }],
+                      }))
+                    }
+                    className="rounded-lg border border-dashed border-stone-300 px-4 py-2.5 text-sm text-stone-600 hover:border-stone-400 hover:text-stone-700"
+                  >
+                    + Add Prize
+                  </button>
+                </div>
+              </div>
               <div className="flex gap-2">
                 <button
                   type="submit"
@@ -643,33 +765,25 @@ export default function TournamentDetailPage() {
                 </dd>
               </div>
             )}
-            <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-stone-400 mb-1">
-                Prizes
-              </dt>
-              <dd className="text-stone-900">
-                <table className="w-full border-separate border-spacing-1 text-sm">
-                  <tbody>
-                    <tr>
-                      <td className="rounded bg-stone-100 px-3 py-2 text-stone-600">1st</td>
-                      <td className="rounded bg-stone-100 px-3 py-2 text-right tabular-nums">{formatCurrency(200)}</td>
-                    </tr>
-                    <tr>
-                      <td className="rounded bg-stone-100 px-3 py-2 text-stone-600">2nd</td>
-                      <td className="rounded bg-stone-100 px-3 py-2 text-right tabular-nums">{formatCurrency(120)}</td>
-                    </tr>
-                    <tr>
-                      <td className="rounded bg-stone-100 px-3 py-2 text-stone-600">3rd</td>
-                      <td className="rounded bg-stone-100 px-3 py-2 text-right tabular-nums">{formatCurrency(80)}</td>
-                    </tr>
-                    <tr>
-                      <td className="rounded bg-stone-100 px-3 py-2 text-stone-600">Two CTP Holes worth $50 each</td>
-                      <td className="rounded bg-stone-100 px-3 py-2 text-right tabular-nums">{formatCurrency(50)} × 2</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </dd>
-            </div>
+            {tournament.prizes && tournament.prizes.length > 0 && (
+              <div>
+                <dt className="text-xs font-medium uppercase tracking-wide text-stone-400 mb-1">
+                  Prizes
+                </dt>
+                <dd className="text-stone-900">
+                  <table className="w-full border-separate border-spacing-1 text-sm">
+                    <tbody>
+                      {tournament.prizes.map((prize, idx) => (
+                        <tr key={idx}>
+                          <td className="rounded bg-stone-100 px-3 py-2 text-stone-600">{prize.name}</td>
+                          <td className="rounded bg-stone-100 px-3 py-2 text-right tabular-nums">{formatCurrency(prize.amount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </dd>
+              </div>
+            )}
           </dl>
           )}
 
@@ -681,18 +795,35 @@ export default function TournamentDetailPage() {
                     ((tournament.greenFee ?? 0) + (tournament.prizePool ?? 0) + (tournament.clubDonation ?? 0)) > 0 && (
                     <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
                       <p className="text-sm text-amber-900">
-                        You will be asked to send your payment through Venmo on a separate page.
-                        Once you have completed your payment click &quot;Paid&quot; below.
-                        An admin will confirm payment.
+                        {tournament.paymentMethod === "venmo" && tournament.venmoUsername
+                          ? "Send your payment via Venmo, then click \"Paid\" below. An admin will confirm payment."
+                          : tournament.paymentMethod === "cash"
+                          ? "Pay cash at the event, then click \"Paid\" below. An admin will confirm payment."
+                          : "Complete your payment and click \"Paid\" below. An admin will confirm payment."}
                       </p>
-                      <button
-                        type="button"
-                        onClick={handleMarkPaid}
-                        disabled={markingPaid}
-                        className="mt-3 rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
-                      >
-                        {markingPaid ? "…" : "Paid"}
-                      </button>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {tournament.paymentMethod === "venmo" && tournament.venmoUsername && (
+                          <a
+                            href={`https://venmo.com/${tournament.venmoUsername.replace(/^@/, "")}?txn=pay&amount=${(tournament.greenFee ?? 0) + (tournament.prizePool ?? 0) + (tournament.clubDonation ?? 0)}&note=${encodeURIComponent(tournament.name)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 rounded-lg bg-[#008CFF] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#0074D4] transition-colors"
+                          >
+                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M19.27 3c.93 1.54 1.35 3.13 1.35 5.14 0 6.41-5.48 14.73-9.93 20.86H3.14L0 4.29l7.55-.69 1.76 14.18c1.64-2.68 3.67-6.89 3.67-9.76 0-1.93-.33-3.24-.93-4.32L19.27 3z"/>
+                            </svg>
+                            Pay {formatCurrency((tournament.greenFee ?? 0) + (tournament.prizePool ?? 0) + (tournament.clubDonation ?? 0))} via Venmo
+                          </a>
+                        )}
+                        <button
+                          type="button"
+                          onClick={handleMarkPaid}
+                          disabled={markingPaid}
+                          className="rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+                        >
+                          {markingPaid ? "…" : "I've Paid"}
+                        </button>
+                      </div>
                     </div>
                   )}
                   {(tournament.myPaymentStatus === "pending") && (
@@ -720,9 +851,14 @@ export default function TournamentDetailPage() {
                   {((tournament.greenFee ?? 0) + (tournament.prizePool ?? 0) + (tournament.clubDonation ?? 0)) > 0 && (
                     <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
                       <p className="text-sm text-amber-900">
-                        You will be asked to send your payment through Venmo on a separate page.
-                        Once you have completed your payment click &quot;Paid&quot; below.
-                        An admin will confirm payment.
+                        <span className="font-medium">Buy-in: {formatCurrency((tournament.greenFee ?? 0) + (tournament.prizePool ?? 0) + (tournament.clubDonation ?? 0))}</span>
+                      </p>
+                      <p className="mt-1 text-sm text-amber-800">
+                        {tournament.paymentMethod === "venmo" && tournament.venmoUsername
+                          ? "When you click Register, you'll be taken to Venmo to send your payment. Once paid, an admin will confirm your payment."
+                          : tournament.paymentMethod === "cash"
+                          ? "Pay cash at the event. An admin will confirm your payment."
+                          : "Complete your payment after registering. An admin will confirm your payment."}
                       </p>
                     </div>
                   )}

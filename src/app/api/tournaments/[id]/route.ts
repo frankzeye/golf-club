@@ -75,6 +75,9 @@ export async function GET(
     greenFee: t.greenFee,
     prizePool: t.prizePool,
     clubDonation: t.clubDonation,
+    paymentMethod: t.paymentMethod,
+    venmoUsername: t.venmoUsername,
+    prizes: t.prizes ? JSON.parse(t.prizes) : [],
     registeredCount: t.registrations.length,
     isRegistered: !!myRegistration,
     myPaymentStatus: myRegistration?.paymentStatus ?? null,
@@ -114,6 +117,9 @@ export async function PATCH(
       greenFee,
       prizePool,
       clubDonation,
+      paymentMethod,
+      venmoUsername,
+      prizes,
     } = body;
 
     const updates: Record<string, unknown> = {};
@@ -160,6 +166,16 @@ export async function PATCH(
     if (clubDonation != null) {
       const cd = Number(clubDonation);
       if (cd >= 0 && Number.isFinite(cd)) updates.clubDonation = cd;
+    }
+    if (paymentMethod === "venmo" || paymentMethod === "cash") {
+      updates.paymentMethod = paymentMethod;
+      updates.venmoUsername = paymentMethod === "venmo" && venmoUsername ? venmoUsername.trim() : null;
+    } else if (paymentMethod === null) {
+      updates.paymentMethod = null;
+      updates.venmoUsername = null;
+    }
+    if (prizes !== undefined) {
+      updates.prizes = Array.isArray(prizes) ? JSON.stringify(prizes) : null;
     }
 
     if (updates.name != null || updates.date != null) {
