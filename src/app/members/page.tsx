@@ -32,7 +32,17 @@ export default function MembersPage() {
     if (status !== "authenticated") return;
     fetch("/api/members")
       .then((res) => res.json())
-      .then((data) => setMembers(Array.isArray(data) ? data : []))
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        list.sort((a, b) => {
+          const aHasName = a.firstName && a.firstName.trim().length > 0;
+          const bHasName = b.firstName && b.firstName.trim().length > 0;
+          if (aHasName && !bHasName) return -1;
+          if (!aHasName && bHasName) return 1;
+          return (a.fullName || "").localeCompare(b.fullName || "");
+        });
+        setMembers(list);
+      })
       .catch(() => setMembers([]))
       .finally(() => setIsLoading(false));
   }, [status, router]);
