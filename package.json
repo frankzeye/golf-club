@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/use-pg-schema.js && prisma generate && next build",
+    "build": "node scripts/use-pg-schema.js && prisma generate && prisma db push && next build",
     "start": "next start",
     "lint": "eslint",
     "postinstall": "node scripts/use-pg-schema.js && prisma generate",
