@@ -51,9 +51,13 @@ export default function SignUpPage() {
         <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4">
           <Link
             href="/"
-            className="font-serif text-xl font-semibold text-stone-900 hover:text-emerald-600"
+            className="flex items-center hover:opacity-90"
           >
-            Golf Club
+            <img
+              src="/logo.png"
+              alt="Spencer's Crossing Golf Club"
+              className="h-10 w-auto"
+            />
           </Link>
           <Link
             href="/signin"
