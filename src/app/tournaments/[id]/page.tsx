@@ -904,9 +904,20 @@ export default function TournamentDetailPage() {
                     </Link>
                     <div className="flex shrink-0 items-center gap-2">
                       {u.paymentStatus === "unpaid" && (
-                        <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600">
-                          Unpaid
-                        </span>
+                        <>
+                          <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600">
+                            Unpaid
+                          </span>
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => handleConfirmPayment(u.registrationId)}
+                              className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-700"
+                            >
+                              Mark as paid
+                            </button>
+                          )}
+                        </>
                       )}
                       {u.paymentStatus === "pending" && (
                         <>
