@@ -45,6 +45,12 @@ export function Header() {
                 Tournaments
               </Link>
               <Link
+                href="/tee-times"
+                className="text-sm font-medium text-stone-600 hover:text-emerald-600"
+              >
+                Tee Times
+              </Link>
+              <Link
                 href="/members"
                 className="text-sm font-medium text-stone-600 hover:text-emerald-600"
               >

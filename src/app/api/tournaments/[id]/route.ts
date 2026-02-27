@@ -7,15 +7,14 @@ import { tournamentSlug, findUniqueSlug } from "@/lib/tournament-slug";
 
 /**
  * GET /api/tournaments/[id] - Get a single tournament's details
+ * Public: anyone can view tournament details
  */
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const userId = session?.user?.id;
 
   const { id: idOrSlug } = await params;
 
@@ -47,9 +46,9 @@ export async function GET(
   }
 
   const t = tournamentWithReg;
-  const myRegistration = t.registrations.find(
-    (r) => r.userId === session.user.id
-  );
+  const myRegistration = userId
+    ? t.registrations.find((r) => r.userId === userId)
+    : null;
 
   const registeredUsers = t.registrations.map((r) => ({
     id: r.user.id,

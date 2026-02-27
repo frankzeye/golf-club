@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { CourseAutocomplete } from "@/components/CourseAutocomplete";
@@ -53,7 +52,6 @@ interface Tournament {
 export default function TournamentsPage() {
   const { data: session, status } = useSession();
   const isAdmin = session?.user?.role === "admin";
-  const router = useRouter();
   const [past, setPast] = useState<Tournament[]>([]);
   const [upcoming, setUpcoming] = useState<Tournament[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -92,13 +90,9 @@ export default function TournamentsPage() {
   };
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/signin?callbackUrl=/tournaments");
-      return;
-    }
-    if (status !== "authenticated") return;
+    if (status === "loading") return;
     loadTournaments();
-  }, [status, router]);
+  }, [status]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,7 +162,7 @@ export default function TournamentsPage() {
     });
   };
 
-  if (status === "loading" || (status === "authenticated" && isLoading)) {
+  if (status === "loading" || isLoading) {
     return (
       <div className="flex min-h-screen flex-col bg-stone-50">
         <Header />
@@ -178,8 +172,6 @@ export default function TournamentsPage() {
       </div>
     );
   }
-
-  if (status === "unauthenticated") return null;
 
   return (
     <div className="flex min-h-screen flex-col bg-stone-50">

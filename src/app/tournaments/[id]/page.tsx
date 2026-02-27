@@ -160,14 +160,10 @@ export default function TournamentDetailPage() {
   }, [id]);
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push(`/signin?callbackUrl=/tournaments/${id}`);
-      return;
-    }
-    if (status !== "authenticated" || !id) return;
+    if (status === "loading" || !id) return;
     loadTournament();
     loadComments();
-  }, [status, router, id, loadTournament, loadComments]);
+  }, [status, id, loadTournament, loadComments]);
 
   const handleSubmitComment = async (e: React.FormEvent, parentId?: string) => {
     e.preventDefault();
@@ -383,7 +379,7 @@ export default function TournamentDetailPage() {
     });
   };
 
-  if (status === "loading" || (status === "authenticated" && isLoading)) {
+  if (status === "loading" || isLoading) {
     return (
       <div className="flex min-h-screen flex-col bg-stone-50">
         <Header />
@@ -393,8 +389,6 @@ export default function TournamentDetailPage() {
       </div>
     );
   }
-
-  if (status === "unauthenticated") return null;
 
   if (error || !tournament) {
     return (
@@ -846,6 +840,13 @@ export default function TournamentDetailPage() {
                     {registering ? "…" : "Unregister"}
                   </button>
                 </>
+              ) : !session ? (
+                <Link
+                  href={`/signin?callbackUrl=/tournaments/${tournament.slug ?? tournament.id}`}
+                  className="inline-block rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700"
+                >
+                  Sign In to Register
+                </Link>
               ) : (
                 <>
                   {((tournament.greenFee ?? 0) + (tournament.prizePool ?? 0) + (tournament.clubDonation ?? 0)) > 0 && (

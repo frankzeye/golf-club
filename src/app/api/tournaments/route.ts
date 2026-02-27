@@ -6,12 +6,11 @@ import { tournamentSlug, findUniqueSlug } from "@/lib/tournament-slug";
 
 /**
  * GET /api/tournaments - List all tournaments (past and upcoming)
+ * Public: anyone can view tournaments
  */
 export async function GET() {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const userId = session?.user?.id;
 
   const tournaments = await prisma.tournament.findMany({
     orderBy: { date: "asc" },
@@ -45,7 +44,7 @@ export async function GET() {
       ...rest,
       slug,
       registeredCount: registrations.length,
-      isRegistered: registrations.some((r) => r.userId === session.user.id),
+      isRegistered: userId ? registrations.some((r) => r.userId === userId) : false,
       registeredUsers,
     };
   };

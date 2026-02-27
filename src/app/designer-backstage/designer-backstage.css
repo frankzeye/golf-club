@@ -1,0 +1,471 @@
+.db-theme {
+  --db-bg: #faf9f7;
+  --db-bg-alt: #f3f1ec;
+  --db-text: #1c1a17;
+  --db-text-muted: #6b6560;
+  --db-accent: #8b7355;
+  --db-accent-hover: #6d5a42;
+  --db-border: #e8e5df;
+
+  font-family: var(--font-body), system-ui, sans-serif;
+  background: var(--db-bg);
+  color: var(--db-text);
+  min-height: 100vh;
+}
+
+.db-theme h1,
+.db-theme h2,
+.db-theme h3,
+.db-theme .db-font-display {
+  font-family: var(--font-display), Georgia, serif;
+}
+
+/* Header */
+.db-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(250, 249, 247, 0.9);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--db-border);
+}
+
+.db-header-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.db-logo {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.25rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--db-text);
+  text-decoration: none;
+}
+
+.db-nav {
+  display: flex;
+  gap: 2rem;
+}
+
+.db-nav a {
+  font-size: 0.8125rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--db-text-muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.db-nav a:hover {
+  color: var(--db-text);
+}
+
+.db-main {
+  flex: 1;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* Footer */
+.db-footer {
+  margin-top: 4rem;
+  border-top: 1px solid var(--db-border);
+}
+
+.db-footer-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.db-footer-brand {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 0.875rem;
+  letter-spacing: 0.05em;
+}
+
+.db-footer-copy {
+  font-size: 0.75rem;
+  color: var(--db-text-muted);
+}
+
+/* Mobile: safe area and touch targets */
+@media (max-width: 640px) {
+  .db-header-inner {
+    padding-left: max(1.5rem, env(safe-area-inset-left));
+    padding-right: max(1.5rem, env(safe-area-inset-right));
+  }
+
+  .db-main {
+    padding-left: max(1.5rem, env(safe-area-inset-left));
+    padding-right: max(1.5rem, env(safe-area-inset-right));
+  }
+
+  .db-footer-inner {
+    padding-left: max(1.5rem, env(safe-area-inset-left));
+    padding-right: max(1.5rem, env(safe-area-inset-right));
+  }
+
+  .db-nav a {
+    padding: 0.5rem 0;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  .db-thumb {
+    width: 64px;
+    height: 64px;
+    min-width: 64px;
+  }
+
+  .db-size-btn,
+  .db-fabric-btn {
+    min-height: 44px;
+  }
+}
+
+/* Home Page */
+.db-home {
+  padding-bottom: 4rem;
+}
+
+.db-hero {
+  padding: 4rem 0;
+  text-align: center;
+}
+
+.db-hero-title {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  margin-bottom: 0.75rem;
+}
+
+.db-hero-sub {
+  font-size: 1rem;
+  color: var(--db-text-muted);
+  max-width: 420px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+.db-section-title {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--db-text-muted);
+  margin-bottom: 2rem;
+}
+
+.db-product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 2rem;
+}
+
+.db-product-card {
+  text-decoration: none;
+  color: inherit;
+  transition: opacity 0.2s;
+}
+
+.db-product-card:hover {
+  opacity: 0.85;
+}
+
+.db-product-card-image {
+  aspect-ratio: 4 / 5;
+  background: var(--db-bg-alt);
+  overflow: hidden;
+}
+
+.db-product-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.db-product-card-content {
+  padding-top: 1.25rem;
+}
+
+.db-product-card-name {
+  font-size: 1.125rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  margin-bottom: 0.25rem;
+}
+
+.db-product-card-price {
+  font-size: 0.875rem;
+  color: var(--db-text-muted);
+}
+
+/* Product Detail Page */
+.db-product {
+  padding: 2rem 0 4rem;
+}
+
+.db-product-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .db-product-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.db-product-gallery {
+  position: sticky;
+  top: 6rem;
+}
+
+@media (max-width: 900px) {
+  .db-product-gallery {
+    position: static;
+  }
+}
+
+.db-product-main-image {
+  aspect-ratio: 4 / 5;
+  background: var(--db-bg-alt);
+  overflow: hidden;
+}
+
+.db-product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.db-product-thumbnails {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.db-thumb {
+  width: 72px;
+  height: 72px;
+  padding: 0;
+  border: 2px solid transparent;
+  background: none;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.db-thumb:hover,
+.db-thumb-active {
+  border-color: var(--db-accent);
+}
+
+.db-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.db-product-details {
+  max-width: 480px;
+}
+
+.db-product-title {
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  margin-bottom: 0.5rem;
+}
+
+.db-product-price {
+  font-size: 1.25rem;
+  color: var(--db-accent);
+  margin-bottom: 1.5rem;
+}
+
+.db-product-description {
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--db-text-muted);
+  margin-bottom: 2rem;
+}
+
+.db-product-section {
+  margin-bottom: 2rem;
+}
+
+.db-product-section-title {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--db-text-muted);
+  margin-bottom: 1rem;
+}
+
+.db-dims {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem 2rem;
+}
+
+.db-dims div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.db-dims dt {
+  font-size: 0.875rem;
+  color: var(--db-text-muted);
+}
+
+.db-dims dd {
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.db-size-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.db-size-btn {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--db-border);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.db-size-btn:hover {
+  border-color: var(--db-accent);
+}
+
+.db-size-btn-active {
+  border-color: var(--db-accent);
+  background: rgba(139, 115, 85, 0.06);
+}
+
+.db-size-name {
+  font-weight: 500;
+  min-width: 6rem;
+}
+
+.db-size-dims {
+  flex: 1;
+  font-size: 0.875rem;
+  color: var(--db-text-muted);
+}
+
+.db-size-price {
+  font-size: 0.9375rem;
+}
+
+.db-fabric-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.db-fabric-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--db-border);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.db-fabric-btn:hover {
+  border-color: var(--db-accent);
+}
+
+.db-fabric-btn-active {
+  border-color: var(--db-accent);
+  background: rgba(139, 115, 85, 0.06);
+}
+
+.db-fabric-swatch {
+  width: 100%;
+  height: 32px;
+  border-radius: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.db-fabric-name {
+  color: var(--db-text);
+}
+
+.db-fabric-upcharge {
+  font-size: 0.75rem;
+  color: var(--db-text-muted);
+}
+
+.db-product-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+
+.db-btn {
+  padding: 1rem 1.5rem;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  border: 1px solid transparent;
+}
+
+.db-btn-primary {
+  background: var(--db-text);
+  color: var(--db-bg);
+}
+
+.db-btn-primary:hover {
+  background: var(--db-accent);
+}
+
+.db-btn-secondary {
+  background: transparent;
+  color: var(--db-text);
+  border-color: var(--db-border);
+}
+
+.db-btn-secondary:hover {
+  border-color: var(--db-accent);
+  color: var(--db-accent);
+}
