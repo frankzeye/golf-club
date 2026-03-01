@@ -20,13 +20,13 @@ const FOREUP_SOURCES = [
     booking_class: "52216",
     schedule_id: "12493",
     schedule_ids: ["12493"],
-    booking_url: "https://foreupsoftware.com/index.php/booking/index/25382#/teetimes",
+    booking_url: "https://foreupsoftware.com/index.php/booking/22974#/teetimes",
   },
   {
     booking_class: "50675",
     schedule_id: "11655",
     schedule_ids: ["11655"],
-    booking_url: "https://foreupsoftware.com/index.php/booking/index/23626#/teetimes",
+    booking_url: "https://foreupsoftware.com/index.php/booking/22694#/teetimes",
   },
   {
     booking_class: "10544",

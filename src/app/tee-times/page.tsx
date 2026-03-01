@@ -369,14 +369,21 @@ export default function TeeTimesPage() {
                   <th className="px-4 py-3 text-left text-sm font-semibold text-stone-700">
                     Players
                   </th>
-                  <th className="px-4 py-3"></th>
+                  <th className="hidden sm:table-cell px-4 py-3"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
                 {filteredTeeTimes.map((teeTime, idx) => (
                   <tr key={idx} className="hover:bg-stone-50">
                     <td className="px-4 py-3 text-sm text-stone-900">
-                      {getDisplayCourseName(teeTime)}
+                      <a
+                        href={teeTime.booking_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-emerald-600 hover:underline"
+                      >
+                        {getDisplayCourseName(teeTime)}
+                      </a>
                     </td>
                     <td className="px-4 py-3 text-sm font-medium text-stone-900">
                       {formatTime(teeTime.time)}
@@ -392,10 +399,10 @@ export default function TeeTimesPage() {
                           ? "bg-amber-100 text-amber-800"
                           : "bg-red-100 text-red-800"
                       }`}>
-                        {teeTime.available_spots} {teeTime.available_spots === 1 ? "spot" : "spots"}
+                        {teeTime.available_spots}<span className="hidden sm:inline"> {teeTime.available_spots === 1 ? "spot" : "spots"}</span>
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm">
+                    <td className="hidden sm:table-cell px-4 py-3 text-sm">
                       <a
                         href={teeTime.booking_url}
                         target="_blank"
