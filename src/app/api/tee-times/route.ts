@@ -100,8 +100,13 @@ async function fetchForeUpTeeTimes(date: string): Promise<TeeTimeResult[]> {
 
       const data = await res.json();
       const times = Array.isArray(data) ? data : [];
-      return times.map((t: Record<string, unknown>) => ({
-        ...t,
+      return times.map((t: Record<string, unknown>): TeeTimeResult => ({
+        time: String(t.time || ""),
+        schedule_name: String(t.schedule_name || ""),
+        guest_green_fee_18: Number(t.guest_green_fee_18 || 0),
+        available_spots: Number(t.available_spots || 0),
+        course_name: String(t.course_name || ""),
+        teesheet_side_name: String(t.teesheet_side_name || ""),
         booking_url: source.booking_url,
       }));
     } catch {
