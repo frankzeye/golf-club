@@ -10,7 +10,10 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Spencer's Crossing Golf Club | Member Portal",
+  title: {
+    template: "%s | Spencer's Crossing Golf Club",
+    default: "Spencer's Crossing Golf Club",
+  },
   description: "Your golf club social platform",
 };
 

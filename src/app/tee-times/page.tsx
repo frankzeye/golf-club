@@ -12,6 +12,7 @@ interface TeeTime {
   available_spots: number;
   course_name: string;
   teesheet_side_name: string;
+  booking_url: string;
 }
 
 const TIME_OPTIONS = [
@@ -47,7 +48,7 @@ export default function TeeTimesPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [filterCourse, setFilterCourse] = useState("all");
+  const [selectedCourses, setSelectedCourses] = useState<Set<string>>(new Set());
   const [filterTime, setFilterTime] = useState("all");
   const [filterPrice, setFilterPrice] = useState("all");
   const [filterPlayers, setFilterPlayers] = useState("all");
@@ -138,10 +139,16 @@ export default function TeeTimesPage() {
     return Array.from(courses).sort();
   }, [teeTimes]);
 
+  useEffect(() => {
+    if (uniqueCourses.length > 0 && selectedCourses.size === 0) {
+      setSelectedCourses(new Set(uniqueCourses));
+    }
+  }, [uniqueCourses]);
+
   const filteredTeeTimes = useMemo(() => {
     return teeTimes.filter((t) => {
       const courseName = getDisplayCourseName(t);
-      if (filterCourse !== "all" && courseName !== filterCourse) {
+      if (selectedCourses.size > 0 && !selectedCourses.has(courseName)) {
         return false;
       }
 
@@ -160,7 +167,27 @@ export default function TeeTimesPage() {
 
       return true;
     });
-  }, [teeTimes, filterCourse, filterTime, filterPrice, filterPlayers]);
+  }, [teeTimes, selectedCourses, filterTime, filterPrice, filterPlayers]);
+
+  const toggleCourse = (course: string) => {
+    setSelectedCourses((prev) => {
+      const next = new Set(prev);
+      if (next.has(course)) {
+        next.delete(course);
+      } else {
+        next.add(course);
+      }
+      return next;
+    });
+  };
+
+  const selectAllCourses = () => {
+    setSelectedCourses(new Set(uniqueCourses));
+  };
+
+  const selectNoCourses = () => {
+    setSelectedCourses(new Set());
+  };
 
   if (status === "loading") {
     return (
@@ -209,75 +236,100 @@ export default function TeeTimesPage() {
         )}
 
         {teeTimes.length > 0 && (
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="mt-6 space-y-4">
             <div>
-              <label htmlFor="filterCourse" className="block text-xs font-medium text-stone-600">
-                Course
-              </label>
-              <select
-                id="filterCourse"
-                value={filterCourse}
-                onChange={(e) => setFilterCourse(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              >
-                <option value="all">All Courses</option>
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-medium text-stone-600">
+                  Courses
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={selectAllCourses}
+                    className="text-xs font-medium text-emerald-600 hover:text-emerald-700"
+                  >
+                    Select All
+                  </button>
+                  <span className="text-xs text-stone-300">|</span>
+                  <button
+                    type="button"
+                    onClick={selectNoCourses}
+                    className="text-xs font-medium text-emerald-600 hover:text-emerald-700"
+                  >
+                    Select None
+                  </button>
+                </div>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
                 {uniqueCourses.map((course) => (
-                  <option key={course} value={course}>
+                  <button
+                    key={course}
+                    type="button"
+                    onClick={() => toggleCourse(course)}
+                    className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+                      selectedCourses.has(course)
+                        ? "bg-emerald-600 text-white"
+                        : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                    }`}
+                  >
                     {course}
-                  </option>
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
-            <div>
-              <label htmlFor="filterTime" className="block text-xs font-medium text-stone-600">
-                Time
-              </label>
-              <select
-                id="filterTime"
-                value={filterTime}
-                onChange={(e) => setFilterTime(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              >
-                {TIME_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="filterPrice" className="block text-xs font-medium text-stone-600">
-                Price
-              </label>
-              <select
-                id="filterPrice"
-                value={filterPrice}
-                onChange={(e) => setFilterPrice(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              >
-                {PRICE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="filterPlayers" className="block text-xs font-medium text-stone-600">
-                Players
-              </label>
-              <select
-                id="filterPlayers"
-                value={filterPlayers}
-                onChange={(e) => setFilterPlayers(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              >
-                {PLAYERS_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label htmlFor="filterTime" className="block text-xs font-medium text-stone-600">
+                  Time
+                </label>
+                <select
+                  id="filterTime"
+                  value={filterTime}
+                  onChange={(e) => setFilterTime(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  {TIME_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="filterPrice" className="block text-xs font-medium text-stone-600">
+                  Price
+                </label>
+                <select
+                  id="filterPrice"
+                  value={filterPrice}
+                  onChange={(e) => setFilterPrice(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  {PRICE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="filterPlayers" className="block text-xs font-medium text-stone-600">
+                  Players
+                </label>
+                <select
+                  id="filterPlayers"
+                  value={filterPlayers}
+                  onChange={(e) => setFilterPlayers(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  {PLAYERS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
         )}
@@ -345,7 +397,7 @@ export default function TeeTimesPage() {
                     </td>
                     <td className="px-4 py-3 text-sm">
                       <a
-                        href="https://foreupsoftware.com/index.php/booking/index/19103#/teetimes"
+                        href={teeTime.booking_url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="font-medium text-emerald-600 hover:text-emerald-700"
