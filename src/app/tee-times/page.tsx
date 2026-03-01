@@ -146,7 +146,7 @@ export default function TeeTimesPage() {
   }, [uniqueCourses]);
 
   const filteredTeeTimes = useMemo(() => {
-    return teeTimes.filter((t) => {
+    const filtered = teeTimes.filter((t) => {
       const courseName = getDisplayCourseName(t);
       if (selectedCourses.size > 0 && !selectedCourses.has(courseName)) {
         return false;
@@ -167,6 +167,8 @@ export default function TeeTimesPage() {
 
       return true;
     });
+
+    return filtered.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
   }, [teeTimes, selectedCourses, filterTime, filterPrice, filterPlayers]);
 
   const toggleCourse = (course: string) => {
@@ -399,7 +401,7 @@ export default function TeeTimesPage() {
                           ? "bg-amber-100 text-amber-800"
                           : "bg-red-100 text-red-800"
                       }`}>
-                        {teeTime.available_spots}<span className="hidden sm:inline"> {teeTime.available_spots === 1 ? "spot" : "spots"}</span>
+                        {teeTime.available_spots}<span className="hidden sm:inline">&nbsp;{teeTime.available_spots === 1 ? "spot" : "spots"}</span>
                       </span>
                     </td>
                     <td className="hidden sm:table-cell px-4 py-3 text-sm">
