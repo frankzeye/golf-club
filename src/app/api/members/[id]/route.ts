@@ -110,3 +110,71 @@ export async function GET(
 
   return NextResponse.json(member);
 }
+
+/**
+ * PATCH /api/members/[id] - Update a member's profile (admin only)
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (session.user.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { id } = await params;
+
+  try {
+    const body = await request.json();
+    const { firstName, lastName, cellNumber, ghinNumber, handicapIndex, homeCourse } = body;
+
+    const data: Record<string, unknown> = {};
+    if (firstName != null) data.firstName = String(firstName);
+    if (lastName != null) data.lastName = String(lastName);
+    if (cellNumber != null) data.cellNumber = cellNumber === "" ? null : String(cellNumber);
+    if (ghinNumber != null) data.ghinNumber = ghinNumber === "" ? null : String(ghinNumber);
+    if (homeCourse != null) data.homeCourse = String(homeCourse);
+    if (handicapIndex != null) {
+      if (handicapIndex === "") {
+        data.handicapIndex = null;
+      } else {
+        const n = Number(handicapIndex);
+        if (!Number.isNaN(n) && n >= 0 && n <= 54) data.handicapIndex = n;
+      }
+    }
+
+    const user = await prisma.user.update({
+      where: { id },
+      data,
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        cellNumber: true,
+        ghinNumber: true,
+        handicapIndex: true,
+        homeCourse: true,
+      },
+    });
+
+    return NextResponse.json({
+      id: user.id,
+      firstName: user.firstName ?? "",
+      lastName: user.lastName ?? "",
+      cellNumber: user.cellNumber,
+      ghinNumber: user.ghinNumber,
+      handicapIndex: user.handicapIndex,
+      homeCourse: user.homeCourse ?? "",
+    });
+  } catch (error) {
+    console.error("Member update failed:", error);
+    return NextResponse.json(
+      { error: "Failed to update member" },
+      { status: 500 }
+    );
+  }
+}

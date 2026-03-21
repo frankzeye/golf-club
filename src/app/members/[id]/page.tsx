@@ -6,6 +6,7 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { AvatarWithSash } from "@/components/AvatarWithSash";
+import { CourseAutocomplete } from "@/components/CourseAutocomplete";
 
 interface UpcomingTournament {
   id: string;
@@ -48,6 +49,15 @@ export default function MemberDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editForm, setEditForm] = useState({
+    firstName: "",
+    lastName: "",
+    cellNumber: "",
+    ghinNumber: "",
+    handicapIndex: "",
+    homeCourse: "",
+  });
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -60,7 +70,17 @@ export default function MemberDetailPage() {
         if (!res.ok) throw new Error("Failed to load");
         return res.json();
       })
-      .then(setMember)
+      .then((data) => {
+        setMember(data);
+        setEditForm({
+          firstName: data.firstName ?? "",
+          lastName: data.lastName ?? "",
+          cellNumber: data.cellNumber ?? "",
+          ghinNumber: data.ghinNumber ?? "",
+          handicapIndex: data.handicapIndex != null ? String(data.handicapIndex) : "",
+          homeCourse: data.homeCourse ?? "",
+        });
+      })
       .catch(() => setError("Member not found"))
       .finally(() => setIsLoading(false));
   }, [status, router, id]);
@@ -86,6 +106,52 @@ export default function MemberDetailPage() {
       setError("Something went wrong");
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!member) return;
+    setIsSaving(true);
+    setError("");
+    try {
+      const hi = editForm.handicapIndex.trim();
+      const res = await fetch(`/api/members/${member.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: editForm.firstName.trim(),
+          lastName: editForm.lastName.trim(),
+          cellNumber: editForm.cellNumber.trim() || null,
+          ghinNumber: editForm.ghinNumber.trim() || null,
+          handicapIndex: hi === "" ? "" : hi,
+          homeCourse: editForm.homeCourse.trim() || null,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error ?? "Failed to save");
+        return;
+      }
+      const data = await res.json();
+      setMember((m) =>
+        m
+          ? {
+              ...m,
+              firstName: data.firstName,
+              lastName: data.lastName,
+              fullName: [data.firstName, data.lastName].filter(Boolean).join(" ") || "—",
+              cellNumber: data.cellNumber,
+              ghinNumber: data.ghinNumber,
+              handicapIndex: data.handicapIndex,
+              homeCourse: data.homeCourse,
+            }
+          : null
+      );
+    } catch {
+      setError("Failed to save");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -203,40 +269,102 @@ export default function MemberDetailPage() {
               {member.email && (
                 <p className="mt-1 text-sm text-stone-500">{member.email}</p>
               )}
-              {isAdmin && member.cellNumber && (
-                <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2">
-                  <p className="text-xs font-medium uppercase tracking-wide text-blue-600">
-                    Admin only · Cell
-                  </p>
-                  <p className="mt-0.5 text-sm text-blue-900">{member.cellNumber}</p>
-                </div>
-              )}
-              <dl className="mt-4 space-y-2">
-                <div>
-                  <dt className="text-xs font-medium uppercase tracking-wide text-stone-400">
-                    Handicap Index
-                  </dt>
-                  <dd className="text-stone-900">
-                    {member.handicapIndex != null ? member.handicapIndex : "—"}
-                  </dd>
-                </div>
-                {member.ghinNumber && (
+              {isAdmin ? (
+                <form onSubmit={handleSaveProfile} className="mt-6 space-y-4">
                   <div>
-                    <dt className="text-xs font-medium uppercase tracking-wide text-stone-400">
-                      GHIN Number
-                    </dt>
-                    <dd className="text-stone-900">{member.ghinNumber}</dd>
+                    <label htmlFor="edit-firstName" className="block text-sm font-medium text-stone-700">First Name</label>
+                    <input
+                      id="edit-firstName"
+                      type="text"
+                      value={editForm.firstName}
+                      onChange={(e) => setEditForm((p) => ({ ...p, firstName: e.target.value }))}
+                      className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      placeholder="John"
+                    />
                   </div>
-                )}
-                <div>
-                  <dt className="text-xs font-medium uppercase tracking-wide text-stone-400">
-                    Home Course
-                  </dt>
-                  <dd className="text-stone-900">
-                    {member.homeCourse || "—"}
-                  </dd>
-                </div>
-              </dl>
+                  <div>
+                    <label htmlFor="edit-lastName" className="block text-sm font-medium text-stone-700">Last Name</label>
+                    <input
+                      id="edit-lastName"
+                      type="text"
+                      value={editForm.lastName}
+                      onChange={(e) => setEditForm((p) => ({ ...p, lastName: e.target.value }))}
+                      className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      placeholder="Smith"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="edit-cellNumber" className="block text-sm font-medium text-stone-700">Cell Number</label>
+                    <input
+                      id="edit-cellNumber"
+                      type="tel"
+                      value={editForm.cellNumber}
+                      onChange={(e) => setEditForm((p) => ({ ...p, cellNumber: e.target.value }))}
+                      className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      placeholder="e.g. (555) 123-4567"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="edit-ghinNumber" className="block text-sm font-medium text-stone-700">GHIN Number</label>
+                    <input
+                      id="edit-ghinNumber"
+                      type="text"
+                      inputMode="numeric"
+                      value={editForm.ghinNumber}
+                      onChange={(e) => setEditForm((p) => ({ ...p, ghinNumber: e.target.value }))}
+                      className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      placeholder="e.g. 12345678"
+                      maxLength={9}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="edit-handicapIndex" className="block text-sm font-medium text-stone-700">Handicap Index</label>
+                    <input
+                      id="edit-handicapIndex"
+                      type="text"
+                      inputMode="decimal"
+                      value={editForm.handicapIndex}
+                      onChange={(e) => setEditForm((p) => ({ ...p, handicapIndex: e.target.value }))}
+                      className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      placeholder="e.g. 12.4"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="edit-homeCourse" className="block text-sm font-medium text-stone-700">Home Course</label>
+                    <CourseAutocomplete
+                      id="edit-homeCourse"
+                      value={editForm.homeCourse}
+                      onChange={(v) => setEditForm((p) => ({ ...p, homeCourse: v }))}
+                      placeholder="Search California courses"
+                      className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isSaving}
+                    className="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    {isSaving ? "Saving…" : "Save Changes"}
+                  </button>
+                </form>
+              ) : (
+                <dl className="mt-4 space-y-2">
+                  <div>
+                    <dt className="text-xs font-medium uppercase tracking-wide text-stone-400">Handicap Index</dt>
+                    <dd className="text-stone-900">{member.handicapIndex != null ? member.handicapIndex : "—"}</dd>
+                  </div>
+                  {member.ghinNumber && (
+                    <div>
+                      <dt className="text-xs font-medium uppercase tracking-wide text-stone-400">GHIN Number</dt>
+                      <dd className="text-stone-900">{member.ghinNumber}</dd>
+                    </div>
+                  )}
+                  <div>
+                    <dt className="text-xs font-medium uppercase tracking-wide text-stone-400">Home Course</dt>
+                    <dd className="text-stone-900">{member.homeCourse || "—"}</dd>
+                  </div>
+                </dl>
+              )}
               {error && (
                 <p className="mt-4 text-sm text-red-600">{error}</p>
               )}
