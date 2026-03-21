@@ -31,6 +31,14 @@ interface RegisteredUser {
   scgaOfficial?: boolean;
 }
 
+interface Prize {
+  name: string;
+  amount: number;
+  winnerId?: string;
+  winnerName?: string;
+  result?: string;
+}
+
 interface Tournament {
   id: string;
   slug: string;
@@ -47,6 +55,7 @@ interface Tournament {
   registeredCount: number;
   isRegistered: boolean;
   registeredUsers: RegisteredUser[];
+  prizes?: Prize[];
 }
 
 export default function TournamentsPage() {
@@ -605,10 +614,20 @@ export default function TournamentsPage() {
                             ? ` · ${t.teamSize}-person teams`
                             : " · Individual"}
                         </p>
-                        {((t.greenFee ?? 0) + (t.prizePool ?? 0) + (t.clubDonation ?? 0)) > 0 && (
-                          <p className="mt-2 text-sm font-medium text-stone-600">
-                            {formatCurrency((t.greenFee ?? 0) + (t.prizePool ?? 0) + (t.clubDonation ?? 0))} buy-in
-                          </p>
+                        {(t.prizes ?? []).length > 0 && (t.prizes ?? []).some((p) => p.winnerName) && (
+                          <div className="mt-3 overflow-hidden rounded-lg border border-stone-200 bg-white">
+                            <div className="border-b border-stone-200 bg-stone-50 px-3 py-2">
+                              <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">Winners</p>
+                            </div>
+                            <ul className="divide-y divide-stone-100">
+                              {(t.prizes ?? []).filter((p) => p.winnerName).map((p, idx) => (
+                                <li key={idx} className="flex items-center justify-between gap-4 px-3 py-2.5 text-sm">
+                                  <span className="font-medium text-stone-900">{p.name}</span>
+                                  <span className="text-stone-900">{p.winnerName}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
                         )}
                         <p className="mt-2 text-sm sm:hidden">
                           <span className="inline-flex items-center rounded-full bg-stone-100 px-2.5 py-0.5 font-medium text-stone-700">

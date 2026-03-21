@@ -14,6 +14,14 @@ interface UpcomingTournament {
   course: string;
 }
 
+interface Badge {
+  id: string;
+  name: string;
+  earned: boolean;
+  tournamentSlug?: string;
+  tournamentName?: string;
+}
+
 interface MemberDetail {
   id: string;
   firstName: string;
@@ -28,6 +36,7 @@ interface MemberDetail {
   email?: string;
   cellNumber?: string | null;
   upcomingTournaments: UpcomingTournament[];
+  badges?: Badge[];
 }
 
 export default function MemberDetailPage() {
@@ -260,6 +269,57 @@ export default function MemberDetailPage() {
               )}
             </div>
           </div>
+
+          {(member.badges ?? []).length > 0 && (
+            <div className="mt-8 border-t border-stone-200 pt-6">
+              <h2 className="text-sm font-semibold text-stone-900">Badges</h2>
+              <p className="mt-1 text-xs text-stone-500">
+                Tournament participation and wins
+              </p>
+              <div className="mt-3 flex flex-wrap gap-3">
+                {(member.badges ?? []).map((badge) => {
+                  const isPrizeBadge = badge.id.startsWith("prize-");
+                  const content = (
+                    <>
+                      <span className="text-base">
+                        {badge.earned ? "🏆" : "🔒"}
+                      </span>
+                      <span className="text-sm font-medium">{badge.name}</span>
+                    </>
+                  );
+                  const wrapperClass = `flex items-center gap-2 rounded-full px-4 py-2 ${
+                    badge.earned
+                      ? isPrizeBadge
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-amber-100 text-amber-800"
+                      : "bg-stone-100 text-stone-400"
+                  }`;
+                  const title = badge.tournamentName ?? (badge.earned ? "Earned" : "Not yet earned");
+                  if (badge.tournamentSlug && badge.earned) {
+                    return (
+                      <Link
+                        key={badge.id}
+                        href={`/tournaments/${badge.tournamentSlug}`}
+                        className={`${wrapperClass} transition-colors hover:opacity-90`}
+                        title={title}
+                      >
+                        {content}
+                      </Link>
+                    );
+                  }
+                  return (
+                    <div
+                      key={badge.id}
+                      className={wrapperClass}
+                      title={title}
+                    >
+                      {content}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {member.upcomingTournaments.length > 0 && (
             <div className="mt-8 border-t border-stone-200 pt-6">

@@ -49,6 +49,43 @@ export async function GET(
     (r) => r.tournament.date >= now
   );
 
+  const hasRegistered = user.tournamentRegistrations.length >= 1;
+  const hasPlayed = user.tournamentRegistrations.some(
+    (r) => r.tournament.date < now
+  );
+
+  const badges: Array<{ id: string; name: string; earned: boolean; tournamentSlug?: string; tournamentName?: string }> = [
+    { id: "register-1st", name: "Register for 1st Tourney", earned: hasRegistered },
+    { id: "play-1st", name: "Play in 1st Tourney", earned: hasPlayed },
+  ];
+
+  const pastTournaments = await prisma.tournament.findMany({
+    where: { date: { lt: now } },
+    select: { id: true, name: true, slug: true, date: true, prizes: true },
+  });
+
+  for (const t of pastTournaments) {
+    if (!t.prizes) continue;
+    try {
+      const prizes = JSON.parse(t.prizes) as Array<{ name: string; amount: number; winnerId?: string }>;
+      const slug = t.slug ?? t.id;
+      const dateStr = t.date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      prizes.forEach((p, idx) => {
+        if (p.winnerId === user.id) {
+          badges.push({
+            id: `prize-${t.id}-${idx}`,
+            name: `${p.name} — ${t.name}`,
+            earned: true,
+            tournamentSlug: slug,
+            tournamentName: `${t.name} (${dateStr})`,
+          });
+        }
+      });
+    } catch {
+      // skip invalid JSON
+    }
+  }
+
   const member = {
     id: user.id,
     firstName: user.firstName ?? "",
@@ -68,6 +105,7 @@ export async function GET(
       date: r.tournament.date,
       course: r.tournament.course,
     })),
+    badges,
   };
 
   return NextResponse.json(member);

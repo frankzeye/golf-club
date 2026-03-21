@@ -40,9 +40,24 @@ export async function GET() {
       imageUrl: r.user.imageUrl,
       scgaOfficial: r.user.scgaOfficial ?? false,
     }));
+    const userById = Object.fromEntries(registeredUsers.map((u) => [u.id, u]));
+    let prizes: Array<{ name: string; amount: number; winnerId?: string; winnerName?: string; result?: string }> = [];
+    if (t.prizes) {
+      try {
+        prizes = JSON.parse(t.prizes).map(
+          (p: { name: string; amount: number; winnerId?: string; result?: string }) => ({
+            ...p,
+            winnerName: p.winnerId ? userById[p.winnerId]?.fullName : undefined,
+          })
+        );
+      } catch {
+        prizes = [];
+      }
+    }
     return {
       ...rest,
       slug,
+      prizes,
       registeredCount: registrations.length,
       isRegistered: userId ? registrations.some((r) => r.userId === userId) : false,
       registeredUsers,

@@ -59,6 +59,8 @@ interface RegisteredUser {
 interface Prize {
   name: string;
   amount: number;
+  winnerId?: string;
+  result?: string;
 }
 
 interface TournamentDetail {
@@ -114,8 +116,11 @@ export default function TournamentDetailPage() {
     clubDonation: "",
     paymentMethod: "" as "" | "venmo" | "cash",
     venmoUsername: "",
-    prizes: [] as { name: string; amount: string }[],
+    prizes: [] as { name: string; amount: string; winnerId?: string; result?: string }[],
   });
+  const [prizeWinnerIds, setPrizeWinnerIds] = useState<string[]>([]);
+  const [prizeResults, setPrizeResults] = useState<string[]>([]);
+  const [isSavingWinners, setIsSavingWinners] = useState(false);
 
   const loadComments = useCallback(() => {
     if (!id) return;
@@ -152,8 +157,15 @@ export default function TournamentDetailPage() {
           clubDonation: data.clubDonation != null ? String(data.clubDonation) : "",
           paymentMethod: (data.paymentMethod === "venmo" || data.paymentMethod === "cash") ? data.paymentMethod : "",
           venmoUsername: data.venmoUsername ?? "",
-          prizes: (data.prizes || []).map((p: Prize) => ({ name: p.name, amount: String(p.amount) })),
+          prizes: (data.prizes || []).map((p: Prize) => ({
+            name: p.name,
+            amount: String(p.amount),
+            winnerId: p.winnerId,
+            result: p.result,
+          })),
         });
+        setPrizeWinnerIds((data.prizes || []).map((p: Prize) => p.winnerId ?? ""));
+        setPrizeResults((data.prizes || []).map((p: Prize) => p.result ?? ""));
       })
       .catch(() => setError("Tournament not found"))
       .finally(() => setIsLoading(false));
@@ -248,7 +260,12 @@ export default function TournamentDetailPage() {
           venmoUsername: editForm.paymentMethod === "venmo" ? editForm.venmoUsername : null,
           prizes: editForm.prizes
             .filter((p) => p.name.trim() && p.amount.trim())
-            .map((p) => ({ name: p.name.trim(), amount: parseFloat(p.amount) || 0 })),
+            .map((p) => ({
+              name: p.name.trim(),
+              amount: parseFloat(p.amount) || 0,
+              ...(p.winnerId && { winnerId: p.winnerId }),
+              ...(p.result?.trim() && { result: p.result.trim() }),
+            })),
         }),
       });
       if (!res.ok) {
@@ -305,6 +322,35 @@ export default function TournamentDetailPage() {
       setError("Failed to delete tournament");
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleSaveWinners = async () => {
+    if (!tournament || !tournament.prizes?.length) return;
+    setIsSavingWinners(true);
+    setError("");
+    try {
+      const updatedPrizes = tournament.prizes.map((p, idx) => ({
+        name: p.name,
+        amount: p.amount,
+        ...(prizeWinnerIds[idx] && { winnerId: prizeWinnerIds[idx] }),
+        ...(prizeResults[idx]?.trim() && { result: prizeResults[idx].trim() }),
+      }));
+      const res = await fetch(`/api/tournaments/${tournament.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prizes: updatedPrizes }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error ?? "Failed to save winners");
+        return;
+      }
+      loadTournament();
+    } catch {
+      setError("Failed to save winners");
+    } finally {
+      setIsSavingWinners(false);
     }
   };
 
@@ -409,6 +455,9 @@ export default function TournamentDetailPage() {
 
   const now = new Date();
   const isUpcoming = new Date(tournament.date + "T23:59:59") >= now;
+  const tournamentDateStr = tournament.date.split("T")[0];
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const canRecordWinners = tournamentDateStr <= todayStr; // true on tournament day or after
   const isFull = tournament.registeredCount >= tournament.availableSpots;
   const isAdmin = session?.user?.role === "admin";
 
@@ -766,16 +815,90 @@ export default function TournamentDetailPage() {
                 </dt>
                 <dd className="text-stone-900">
                   <table className="w-full border-separate border-spacing-1 text-sm">
+                    <thead>
+                      <tr>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-stone-500">Prize</th>
+                        <th className="px-3 py-2 text-right text-xs font-medium text-stone-500">Amount</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-stone-500">Winner</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-stone-500">Result</th>
+                      </tr>
+                    </thead>
                     <tbody>
-                      {tournament.prizes.map((prize, idx) => (
-                        <tr key={idx}>
-                          <td className="rounded bg-stone-100 px-3 py-2 text-stone-600">{prize.name}</td>
-                          <td className="rounded bg-stone-100 px-3 py-2 text-right tabular-nums">{formatCurrency(prize.amount)}</td>
-                        </tr>
-                      ))}
+                      {tournament.prizes.map((prize, idx) => {
+                        const winner = prize.winnerId
+                          ? tournament.registeredUsers.find((u) => u.id === prize.winnerId)
+                          : null;
+                        return (
+                          <tr key={idx}>
+                            <td className="rounded bg-stone-100 px-3 py-2 text-stone-600">{prize.name}</td>
+                            <td className="rounded bg-stone-100 px-3 py-2 text-right tabular-nums">{formatCurrency(prize.amount)}</td>
+                            <td className="rounded bg-stone-100 px-3 py-2 text-stone-700">
+                              {winner ? (
+                                <Link href={`/members/${winner.id}`} className="hover:text-emerald-600 hover:underline">
+                                  {winner.fullName}
+                                </Link>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
+                            <td className="rounded bg-stone-100 px-3 py-2 text-stone-700 tabular-nums">{prize.result || "—"}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </dd>
+              </div>
+            )}
+
+            {isAdmin && canRecordWinners && tournament.prizes && tournament.prizes.length > 0 && (
+              <div className="mt-6 rounded-lg border border-stone-200 bg-stone-50 p-4">
+                <h3 className="text-sm font-semibold text-stone-800">Record Winners</h3>
+                <p className="mt-1 text-xs text-stone-600">
+                  Assign winners and record results (e.g. score) for each prize. Winners must be registered for this tournament.
+                </p>
+                <div className="mt-4 space-y-3">
+                  {tournament.prizes.map((prize, idx) => (
+                    <div key={idx} className="flex flex-wrap items-center gap-2">
+                      <span className="w-28 shrink-0 text-sm font-medium text-stone-700">{prize.name}</span>
+                      <select
+                        value={prizeWinnerIds[idx] ?? ""}
+                        onChange={(e) => {
+                          const next = [...prizeWinnerIds];
+                          next[idx] = e.target.value;
+                          setPrizeWinnerIds(next);
+                        }}
+                        className="flex-1 min-w-[160px] rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      >
+                        <option value="">— Select winner —</option>
+                        {tournament.registeredUsers.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.fullName}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="text"
+                        value={prizeResults[idx] ?? ""}
+                        onChange={(e) => {
+                          const next = [...prizeResults];
+                          next[idx] = e.target.value;
+                          setPrizeResults(next);
+                        }}
+                        placeholder="Result (e.g. 72, -5)"
+                        className="w-32 rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 placeholder-stone-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSaveWinners}
+                  disabled={isSavingWinners}
+                  className="mt-4 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  {isSavingWinners ? "Saving…" : "Save Winners"}
+                </button>
               </div>
             )}
           </dl>
