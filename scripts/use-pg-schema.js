@@ -28,6 +28,10 @@ if (usePostgres) {
   let schema = fs.readFileSync(schemaPath, "utf8");
   schema = schema.replace(/provider = "sqlite"/, 'provider = "postgresql"');
   fs.writeFileSync(schemaPath, schema);
+  const lockPath = path.join(__dirname, "..", "prisma", "migrations", "migration_lock.toml");
+  let lock = fs.readFileSync(lockPath, "utf8");
+  lock = lock.replace(/provider = "sqlite"/, 'provider = "postgresql"');
+  fs.writeFileSync(lockPath, lock);
   const reason = url.startsWith("postgres")
     ? ""
     : isRailway
