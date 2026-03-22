@@ -482,12 +482,12 @@ export default function TournamentDetailPage() {
               <h1 className="font-serif text-2xl font-semibold text-stone-900">
                 {tournament.name}
               </h1>
-              {tournament.description && (
-                <p className="mt-2 text-stone-600">{tournament.description}</p>
-              )}
-              <p className={`text-stone-600 ${tournament.description ? "mt-1" : "mt-2"}`}>
+              <p className="mt-2 font-semibold text-stone-900">
                 {formatDate(tournament.date)} · {tournament.course}
               </p>
+              {tournament.description && (
+                <p className="mt-1 italic text-stone-600">{tournament.description}</p>
+              )}
             </div>
             {isAdmin && !isEditing && (
               <div className="flex shrink-0 gap-2">
