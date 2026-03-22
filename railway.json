@@ -1,0 +1,5 @@
+{
+  "deploy": {
+    "preDeployCommand": ["node", "scripts/db-baseline.js"]
+  }
+}
