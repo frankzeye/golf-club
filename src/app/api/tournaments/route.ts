@@ -9,65 +9,73 @@ import { tournamentSlug, findUniqueSlug } from "@/lib/tournament-slug";
  * Public: anyone can view tournaments
  */
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  const userId = session?.user?.id;
+  try {
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id;
 
-  const tournaments = await prisma.tournament.findMany({
-    orderBy: { date: "asc" },
-    include: {
-      registrations: {
-        include: {
-          user: {
-            select: { id: true, firstName: true, lastName: true, imageUrl: true, scgaOfficial: true },
+    const tournaments = await prisma.tournament.findMany({
+      orderBy: { date: "asc" },
+      include: {
+        registrations: {
+          include: {
+            user: {
+              select: { id: true, firstName: true, lastName: true, imageUrl: true, scgaOfficial: true },
+            },
           },
         },
       },
-    },
-  });
+    });
 
-  const now = new Date();
-  const past = tournaments.filter((t) => t.date < now);
-  const upcoming = tournaments.filter((t) => t.date >= now);
+    const now = new Date();
+    const past = tournaments.filter((t) => t.date < now);
+    const upcoming = tournaments.filter((t) => t.date >= now);
 
-  const format = (t: (typeof tournaments)[0]) => {
-    const { registrations, ...rest } = t;
-    const slug = t.slug ?? tournamentSlug(t.date, t.name);
-    const registeredUsers = registrations.map((r) => ({
-      id: r.user.id,
-      firstName: r.user.firstName ?? "",
-      lastName: r.user.lastName ?? "",
-      fullName: [r.user.firstName, r.user.lastName].filter(Boolean).join(" ") || "—",
-      imageUrl: r.user.imageUrl,
-      scgaOfficial: r.user.scgaOfficial ?? false,
-    }));
-    const userById = Object.fromEntries(registeredUsers.map((u) => [u.id, u]));
-    let prizes: Array<{ name: string; amount: number; winnerId?: string; winnerName?: string; result?: string }> = [];
-    if (t.prizes) {
-      try {
-        prizes = JSON.parse(t.prizes).map(
-          (p: { name: string; amount: number; winnerId?: string; result?: string }) => ({
-            ...p,
-            winnerName: p.winnerId ? userById[p.winnerId]?.fullName : undefined,
-          })
-        );
-      } catch {
-        prizes = [];
+    const format = (t: (typeof tournaments)[0]) => {
+      const { registrations, ...rest } = t;
+      const slug = t.slug ?? tournamentSlug(t.date, t.name);
+      const registeredUsers = registrations.map((r) => ({
+        id: r.user.id,
+        firstName: r.user.firstName ?? "",
+        lastName: r.user.lastName ?? "",
+        fullName: [r.user.firstName, r.user.lastName].filter(Boolean).join(" ") || "—",
+        imageUrl: r.user.imageUrl,
+        scgaOfficial: r.user.scgaOfficial ?? false,
+      }));
+      const userById = Object.fromEntries(registeredUsers.map((u) => [u.id, u]));
+      let prizes: Array<{ name: string; amount: number; winnerId?: string; winnerName?: string; result?: string }> = [];
+      if (t.prizes) {
+        try {
+          prizes = JSON.parse(t.prizes).map(
+            (p: { name: string; amount: number; winnerId?: string; result?: string }) => ({
+              ...p,
+              winnerName: p.winnerId ? userById[p.winnerId]?.fullName : undefined,
+            })
+          );
+        } catch {
+          prizes = [];
+        }
       }
-    }
-    return {
-      ...rest,
-      slug,
-      prizes,
-      registeredCount: registrations.length,
-      isRegistered: userId ? registrations.some((r) => r.userId === userId) : false,
-      registeredUsers,
+      return {
+        ...rest,
+        slug,
+        prizes,
+        registeredCount: registrations.length,
+        isRegistered: userId ? registrations.some((r) => r.userId === userId) : false,
+        registeredUsers,
+      };
     };
-  };
 
-  return NextResponse.json({
-    past: past.map(format),
-    upcoming: upcoming.map(format),
-  });
+    return NextResponse.json({
+      past: past.map(format),
+      upcoming: upcoming.map(format),
+    });
+  } catch (error) {
+    console.error("GET /api/tournaments failed:", error);
+    return NextResponse.json(
+      { error: "Failed to load tournaments" },
+      { status: 500 }
+    );
+  }
 }
 
 /**

@@ -83,19 +83,41 @@ export default function TournamentsPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
 
   const loadTournaments = () => {
+    setLoadError("");
     fetch("/api/tournaments")
-      .then((res) => res.json())
-      .then((data) => {
-        const fmt = (t: { date: string }) => ({
-          ...t,
-          date: t.date.split("T")[0],
-        });
-        setPast((data.past || []).map(fmt));
-        setUpcoming((data.upcoming || []).map(fmt));
+      .then((res) => {
+        if (!res.ok) {
+          return res
+            .json()
+            .catch(() => ({}))
+            .then((err) => {
+              throw new Error(
+                (err as { error?: string })?.error ||
+                  `Failed to load tournaments (${res.status})`
+              );
+            });
+        }
+        return res.json();
       })
-      .catch(() => {})
+      .then((data) => {
+        const fmt = (t: { date?: string | null; [key: string]: unknown }) => {
+          const dateStr =
+            typeof t.date === "string" ? t.date.split("T")[0] : "";
+          return { ...t, date: dateStr };
+        };
+        const pastList = Array.isArray(data?.past) ? data.past : [];
+        const upcomingList = Array.isArray(data?.upcoming) ? data.upcoming : [];
+        setPast(pastList.map(fmt));
+        setUpcoming(upcomingList.map(fmt));
+      })
+      .catch((err) => {
+        setLoadError(err?.message ?? "Failed to load tournaments");
+        setPast([]);
+        setUpcoming([]);
+      })
       .finally(() => setIsLoading(false));
   };
 
@@ -208,8 +230,23 @@ export default function TournamentsPage() {
           )}
         </div>
 
-        {error && (
-          <p className="mt-4 text-sm text-red-600">{error}</p>
+        {(error || loadError) && (
+          <div className="mt-4 flex items-center gap-3">
+            <p className="text-sm text-red-600">{error || loadError}</p>
+            {loadError && (
+              <button
+                type="button"
+                onClick={() => {
+                  setLoadError("");
+                  setIsLoading(true);
+                  loadTournaments();
+                }}
+                className="text-sm font-medium text-emerald-600 hover:text-emerald-700"
+              >
+                Try again
+              </button>
+            )}
+          </div>
         )}
 
         {isAdmin && showForm && (
