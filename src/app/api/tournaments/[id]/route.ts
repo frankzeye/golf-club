@@ -65,6 +65,7 @@ export async function GET(
     id: t.id,
     slug: t.slug ?? tournamentSlug(t.date, t.name),
     name: t.name,
+    description: t.description ?? null,
     date: t.date,
     course: t.course,
     scoringFormat: t.scoringFormat,
@@ -107,6 +108,7 @@ export async function PATCH(
     const body = await request.json();
     const {
       name,
+      description,
       date,
       course,
       scoringFormat,
@@ -125,6 +127,9 @@ export async function PATCH(
 
     if (name != null && typeof name === "string" && name.trim().length > 0) {
       updates.name = name.trim();
+    }
+    if (description !== undefined) {
+      updates.description = typeof description === "string" && description.trim() ? description.trim() : null;
     }
     if (date != null) {
       updates.date = new Date(date);

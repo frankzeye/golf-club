@@ -67,6 +67,7 @@ export default function TournamentsPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
     name: "",
+    description: "",
     date: "",
     course: "",
     scoringFormat: "",
@@ -113,6 +114,7 @@ export default function TournamentsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.name.trim(),
+          description: form.description.trim() || null,
           date: form.date,
           course: form.course.trim(),
           scoringFormat: form.scoringFormat,
@@ -136,6 +138,7 @@ export default function TournamentsPage() {
       }
       setForm({
         name: "",
+        description: "",
         date: "",
         course: "",
         scoringFormat: "",
@@ -224,6 +227,18 @@ export default function TournamentsPage() {
                   required
                   className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   placeholder="e.g. Spring Championship"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700">
+                  Description
+                </label>
+                <textarea
+                  value={form.description}
+                  onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+                  rows={2}
+                  className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 placeholder-stone-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  placeholder="Short description (optional)"
                 />
               </div>
               <div>

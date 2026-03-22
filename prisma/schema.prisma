@@ -29,6 +29,7 @@ model Tournament {
   id             String   @id @default(cuid())
   slug           String?  @unique
   name           String
+  description    String?  // Short description shown under the title
   date           DateTime
   course         String
   scoringFormat  String

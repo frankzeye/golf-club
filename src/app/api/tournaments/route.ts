@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, date, course, scoringFormat, individualOrTeam, teamSize, availableSpots, greenFee, prizePool, clubDonation, paymentMethod, venmoUsername, prizes } = body;
+    const { name, description, date, course, scoringFormat, individualOrTeam, teamSize, availableSpots, greenFee, prizePool, clubDonation, paymentMethod, venmoUsername, prizes } = body;
 
     if (!name || typeof name !== "string" || name.trim().length === 0) {
       return NextResponse.json(
@@ -143,6 +143,7 @@ export async function POST(request: NextRequest) {
     const tournament = await prisma.tournament.create({
       data: {
         name: name.trim(),
+        description: typeof description === "string" && description.trim() ? description.trim() : null,
         slug,
         date: dateObj,
         course: course.trim(),

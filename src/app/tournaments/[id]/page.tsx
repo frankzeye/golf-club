@@ -67,6 +67,7 @@ interface TournamentDetail {
   id: string;
   slug?: string;
   name: string;
+  description?: string | null;
   date: string;
   course: string;
   scoringFormat: string;
@@ -105,6 +106,7 @@ export default function TournamentDetailPage() {
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [editForm, setEditForm] = useState({
     name: "",
+    description: "",
     date: "",
     course: "",
     scoringFormat: "",
@@ -146,6 +148,7 @@ export default function TournamentDetailPage() {
         setTournament(data);
         setEditForm({
           name: data.name ?? "",
+          description: data.description ?? "",
           date: data.date ?? "",
           course: data.course ?? "",
           scoringFormat: data.scoringFormat ?? "",
@@ -247,6 +250,7 @@ export default function TournamentDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: editForm.name.trim(),
+          description: editForm.description.trim() || null,
           date: editForm.date,
           course: editForm.course.trim(),
           scoringFormat: editForm.scoringFormat,
@@ -478,7 +482,10 @@ export default function TournamentDetailPage() {
               <h1 className="font-serif text-2xl font-semibold text-stone-900">
                 {tournament.name}
               </h1>
-              <p className="mt-2 text-stone-600">
+              {tournament.description && (
+                <p className="mt-2 text-stone-600">{tournament.description}</p>
+              )}
+              <p className={`text-stone-600 ${tournament.description ? "mt-1" : "mt-2"}`}>
                 {formatDate(tournament.date)} · {tournament.course}
               </p>
             </div>
@@ -519,6 +526,16 @@ export default function TournamentDetailPage() {
                   onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))}
                   required
                   className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700">Description</label>
+                <textarea
+                  value={editForm.description}
+                  onChange={(e) => setEditForm((p) => ({ ...p, description: e.target.value }))}
+                  rows={2}
+                  className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  placeholder="Short description (optional)"
                 />
               </div>
               <div>
