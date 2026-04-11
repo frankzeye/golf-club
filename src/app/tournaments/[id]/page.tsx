@@ -95,6 +95,7 @@ export default function TournamentDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [registering, setRegistering] = useState(false);
+  const [removingRegistrationId, setRemovingRegistrationId] = useState<string | null>(null);
   const [markingPaid, setMarkingPaid] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -399,6 +400,32 @@ export default function TournamentDetailPage() {
       setError("Something went wrong");
     } finally {
       setRegistering(false);
+    }
+  };
+
+  const handleAdminRemoveRegistration = async (
+    registrationId: string,
+    displayName: string
+  ) => {
+    if (!tournament) return;
+    if (!window.confirm(`Remove ${displayName} from this tournament?`)) return;
+    setRemovingRegistrationId(registrationId);
+    setError("");
+    try {
+      const res = await fetch(
+        `/api/tournaments/${tournament.id}/registrations/${registrationId}`,
+        { method: "DELETE" }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Failed to remove registration");
+        return;
+      }
+      loadTournament();
+    } catch {
+      setError("Failed to remove registration");
+    } finally {
+      setRemovingRegistrationId(null);
     }
   };
 
@@ -1086,6 +1113,18 @@ export default function TournamentDetailPage() {
                         <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
                           Paid and registered
                         </span>
+                      )}
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleAdminRemoveRegistration(u.registrationId, u.fullName)
+                          }
+                          disabled={removingRegistrationId === u.registrationId}
+                          className="rounded-lg border border-red-200 bg-white px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                        >
+                          {removingRegistrationId === u.registrationId ? "…" : "Remove"}
+                        </button>
                       )}
                     </div>
                   </div>
