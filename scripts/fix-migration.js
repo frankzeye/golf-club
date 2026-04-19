@@ -83,7 +83,7 @@ async function main() {
            (id, checksum, finished_at, migration_name, logs, rolled_back_at,
             started_at, applied_steps_count)
          VALUES
-           (gen_random_uuid(), $1, $2, $3, NULL, NULL, $2, 1)`,
+           (gen_random_uuid(), $1, $2::timestamptz, $3, NULL, NULL, $2::timestamptz, 1)`,
         checksum,
         now,
         MIGRATION_NAME
