@@ -67,11 +67,19 @@ export async function GET(
   for (const t of pastTournaments) {
     if (!t.prizes) continue;
     try {
-      const prizes = JSON.parse(t.prizes) as Array<{ name: string; amount: number; winnerId?: string }>;
+      const prizes = JSON.parse(t.prizes) as Array<{
+        name: string;
+        amount: number;
+        winnerId?: string;
+        winnerIds?: string[];
+      }>;
       const slug = t.slug ?? t.id;
       const dateStr = t.date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
       prizes.forEach((p, idx) => {
-        if (p.winnerId === user.id) {
+        const won =
+          p.winnerId === user.id ||
+          (Array.isArray(p.winnerIds) && p.winnerIds.includes(user.id));
+        if (won) {
           badges.push({
             id: `prize-${t.id}-${idx}`,
             name: `${p.name} — ${t.name}`,

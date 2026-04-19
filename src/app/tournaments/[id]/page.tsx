@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
@@ -60,7 +60,31 @@ interface Prize {
   name: string;
   amount: number;
   winnerId?: string;
+  winnerIds?: string[];
   result?: string;
+}
+
+/** One row per prize: one slot (individual) or `teamSize` slots (team). */
+function prizeWinnerSelectionsFromServer(
+  prizes: Prize[],
+  individualOrTeam: string,
+  teamSize: number | null
+): string[][] {
+  const slots = individualOrTeam === "team" ? teamSize ?? 2 : 1;
+  return prizes.map((p) => {
+    if (individualOrTeam !== "team") {
+      return [p.winnerId ?? ""];
+    }
+    const fromArr =
+      Array.isArray(p.winnerIds) && p.winnerIds.length > 0
+        ? [...p.winnerIds]
+        : p.winnerId
+          ? [p.winnerId]
+          : [];
+    const row: string[] = [];
+    for (let i = 0; i < slots; i++) row.push(fromArr[i] ?? "");
+    return row;
+  });
 }
 
 interface TournamentDetail {
@@ -119,9 +143,15 @@ export default function TournamentDetailPage() {
     clubDonation: "",
     paymentMethod: "" as "" | "venmo" | "cash",
     venmoUsername: "",
-    prizes: [] as { name: string; amount: string; winnerId?: string; result?: string }[],
+    prizes: [] as {
+      name: string;
+      amount: string;
+      winnerId?: string;
+      winnerIds?: string[];
+      result?: string;
+    }[],
   });
-  const [prizeWinnerIds, setPrizeWinnerIds] = useState<string[]>([]);
+  const [prizeWinnerSelections, setPrizeWinnerSelections] = useState<string[][]>([]);
   const [prizeResults, setPrizeResults] = useState<string[]>([]);
   const [isSavingWinners, setIsSavingWinners] = useState(false);
 
@@ -165,10 +195,17 @@ export default function TournamentDetailPage() {
             name: p.name,
             amount: String(p.amount),
             winnerId: p.winnerId,
+            winnerIds: p.winnerIds,
             result: p.result,
           })),
         });
-        setPrizeWinnerIds((data.prizes || []).map((p: Prize) => p.winnerId ?? ""));
+        setPrizeWinnerSelections(
+          prizeWinnerSelectionsFromServer(
+            data.prizes || [],
+            data.individualOrTeam ?? "individual",
+            data.teamSize ?? null
+          )
+        );
         setPrizeResults((data.prizes || []).map((p: Prize) => p.result ?? ""));
       })
       .catch(() => setError("Tournament not found"))
@@ -180,6 +217,13 @@ export default function TournamentDetailPage() {
     loadTournament();
     loadComments();
   }, [status, id, loadTournament, loadComments]);
+
+  const registeredUsersSortedAlphabetical = useMemo(() => {
+    if (!tournament?.registeredUsers?.length) return [];
+    return [...tournament.registeredUsers].sort((a, b) =>
+      a.fullName.localeCompare(b.fullName, undefined, { sensitivity: "base" })
+    );
+  }, [tournament?.registeredUsers]);
 
   const handleSubmitComment = async (e: React.FormEvent, parentId?: string) => {
     e.preventDefault();
@@ -265,12 +309,21 @@ export default function TournamentDetailPage() {
           venmoUsername: editForm.paymentMethod === "venmo" ? editForm.venmoUsername : null,
           prizes: editForm.prizes
             .filter((p) => p.name.trim() && p.amount.trim())
-            .map((p) => ({
-              name: p.name.trim(),
-              amount: parseFloat(p.amount) || 0,
-              ...(p.winnerId && { winnerId: p.winnerId }),
-              ...(p.result?.trim() && { result: p.result.trim() }),
-            })),
+            .map((p) => {
+              const row: Record<string, unknown> = {
+                name: p.name.trim(),
+                amount: parseFloat(p.amount) || 0,
+              };
+              if (p.result?.trim()) row.result = p.result.trim();
+              if (editForm.individualOrTeam === "team") {
+                const ids = (Array.isArray(p.winnerIds) ? p.winnerIds : []).filter(Boolean);
+                if (ids.length > 0) row.winnerIds = [...new Set(ids)];
+                else if (p.winnerId) row.winnerIds = [p.winnerId];
+              } else if (p.winnerId) {
+                row.winnerId = p.winnerId;
+              }
+              return row;
+            }),
         }),
       });
       if (!res.ok) {
@@ -335,12 +388,30 @@ export default function TournamentDetailPage() {
     setIsSavingWinners(true);
     setError("");
     try {
-      const updatedPrizes = tournament.prizes.map((p, idx) => ({
-        name: p.name,
-        amount: p.amount,
-        ...(prizeWinnerIds[idx] && { winnerId: prizeWinnerIds[idx] }),
-        ...(prizeResults[idx]?.trim() && { result: prizeResults[idx].trim() }),
-      }));
+      const isTeam = tournament.individualOrTeam === "team";
+      const updatedPrizes = tournament.prizes.map((p, idx) => {
+        const row = prizeWinnerSelections[idx] ?? [];
+        const base: {
+          name: string;
+          amount: number;
+          result?: string;
+          winnerId?: string;
+          winnerIds?: string[];
+        } = {
+          name: p.name,
+          amount: p.amount,
+          ...(prizeResults[idx]?.trim() && { result: prizeResults[idx].trim() }),
+        };
+        if (isTeam) {
+          const ids = row.map((id) => id.trim()).filter(Boolean);
+          const uniq = [...new Set(ids)];
+          if (uniq.length > 0) base.winnerIds = uniq;
+        } else {
+          const id = row[0]?.trim();
+          if (id) base.winnerId = id;
+        }
+        return base;
+      });
       const res = await fetch(`/api/tournaments/${tournament.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -869,18 +940,36 @@ export default function TournamentDetailPage() {
                     </thead>
                     <tbody>
                       {tournament.prizes.map((prize, idx) => {
-                        const winner = prize.winnerId
-                          ? tournament.registeredUsers.find((u) => u.id === prize.winnerId)
-                          : null;
+                        const winnerIds =
+                          tournament.individualOrTeam === "team" &&
+                          Array.isArray(prize.winnerIds) &&
+                          prize.winnerIds.length > 0
+                            ? prize.winnerIds
+                            : prize.winnerId
+                              ? [prize.winnerId]
+                              : [];
+                        const winners = winnerIds
+                          .map((wid) => tournament.registeredUsers.find((u) => u.id === wid))
+                          .filter((u): u is RegisteredUser => Boolean(u));
                         return (
                           <tr key={idx}>
                             <td className="rounded bg-stone-100 px-3 py-2 text-stone-600">{prize.name}</td>
                             <td className="rounded bg-stone-100 px-3 py-2 text-right tabular-nums">{formatCurrency(prize.amount)}</td>
                             <td className="rounded bg-stone-100 px-3 py-2 text-stone-700">
-                              {winner ? (
-                                <Link href={`/members/${winner.id}`} className="hover:text-emerald-600 hover:underline">
-                                  {winner.fullName}
-                                </Link>
+                              {winners.length > 0 ? (
+                                <span className="inline-flex flex-wrap gap-x-1 gap-y-0.5">
+                                  {winners.map((w, wi) => (
+                                    <span key={w.id}>
+                                      {wi > 0 ? <span className="text-stone-400"> / </span> : null}
+                                      <Link
+                                        href={`/members/${w.id}`}
+                                        className="hover:text-emerald-600 hover:underline"
+                                      >
+                                        {w.fullName}
+                                      </Link>
+                                    </span>
+                                  ))}
+                                </span>
                               ) : (
                                 "—"
                               )}
@@ -899,41 +988,89 @@ export default function TournamentDetailPage() {
               <div className="mt-6 rounded-lg border border-stone-200 bg-stone-50 p-4">
                 <h3 className="text-sm font-semibold text-stone-800">Record Winners</h3>
                 <p className="mt-1 text-xs text-stone-600">
-                  Assign winners and record results (e.g. score) for each prize. Winners must be registered for this tournament.
+                  {tournament.individualOrTeam === "team"
+                    ? `Pick up to ${tournament.teamSize ?? 2} registered players per prize (one per slot). Each person can only appear once per prize.`
+                    : "Assign winners and record results (e.g. score) for each prize. Winners must be registered for this tournament."}
                 </p>
                 <div className="mt-4 space-y-3">
-                  {tournament.prizes.map((prize, idx) => (
-                    <div key={idx} className="flex flex-wrap items-center gap-2">
-                      <span className="w-28 shrink-0 text-sm font-medium text-stone-700">{prize.name}</span>
-                      <select
-                        value={prizeWinnerIds[idx] ?? ""}
-                        onChange={(e) => {
-                          const next = [...prizeWinnerIds];
-                          next[idx] = e.target.value;
-                          setPrizeWinnerIds(next);
-                        }}
-                        className="flex-1 min-w-[160px] rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                      >
-                        <option value="">— Select winner —</option>
-                        {tournament.registeredUsers.map((u) => (
-                          <option key={u.id} value={u.id}>
-                            {u.fullName}
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        type="text"
-                        value={prizeResults[idx] ?? ""}
-                        onChange={(e) => {
-                          const next = [...prizeResults];
-                          next[idx] = e.target.value;
-                          setPrizeResults(next);
-                        }}
-                        placeholder="Result (e.g. 72, -5)"
-                        className="w-32 rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 placeholder-stone-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                      />
-                    </div>
-                  ))}
+                  {tournament.prizes.map((prize, idx) => {
+                    const row = prizeWinnerSelections[idx] ?? [];
+                    const isTeam = tournament.individualOrTeam === "team";
+                    const teamSlots = tournament.teamSize ?? 2;
+                    return (
+                      <div key={idx} className="flex flex-wrap items-start gap-2">
+                        <span className="w-28 shrink-0 pt-2 text-sm font-medium text-stone-700">{prize.name}</span>
+                        <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                          {isTeam ? (
+                            Array.from({ length: teamSlots }).map((_, slotIdx) => {
+                              const taken = new Set(
+                                row
+                                  .map((id, si) => (si !== slotIdx && id ? id : null))
+                                  .filter((x): x is string => Boolean(x))
+                              );
+                              return (
+                                <select
+                                  key={slotIdx}
+                                  value={row[slotIdx] ?? ""}
+                                  onChange={(e) => {
+                                    setPrizeWinnerSelections((prev) =>
+                                      prev.map((r, ridx) => {
+                                        if (ridx !== idx) return r;
+                                        const nextRow = [...(r.length ? r : Array(teamSlots).fill(""))];
+                                        while (nextRow.length < teamSlots) nextRow.push("");
+                                        nextRow[slotIdx] = e.target.value;
+                                        return nextRow;
+                                      })
+                                    );
+                                  }}
+                                  className="min-w-[160px] flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 sm:max-w-[200px]"
+                                >
+                                  <option value="">
+                                    — Player {slotIdx + 1} —
+                                  </option>
+                                  {registeredUsersSortedAlphabetical
+                                    .filter((u) => !taken.has(u.id))
+                                    .map((u) => (
+                                      <option key={u.id} value={u.id}>
+                                        {u.fullName}
+                                      </option>
+                                    ))}
+                                </select>
+                              );
+                            })
+                          ) : (
+                            <select
+                              value={row[0] ?? ""}
+                              onChange={(e) => {
+                                setPrizeWinnerSelections((prev) =>
+                                  prev.map((r, ridx) => (ridx === idx ? [e.target.value] : r))
+                                );
+                              }}
+                              className="min-w-[160px] flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            >
+                              <option value="">— Select winner —</option>
+                              {registeredUsersSortedAlphabetical.map((u) => (
+                                <option key={u.id} value={u.id}>
+                                  {u.fullName}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                          <input
+                            type="text"
+                            value={prizeResults[idx] ?? ""}
+                            onChange={(e) => {
+                              const next = [...prizeResults];
+                              next[idx] = e.target.value;
+                              setPrizeResults(next);
+                            }}
+                            placeholder="Result (e.g. 72, -5)"
+                            className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 placeholder-stone-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 sm:w-32"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
                 <button
                   type="button"

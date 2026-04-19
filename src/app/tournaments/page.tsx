@@ -35,6 +35,7 @@ interface Prize {
   name: string;
   amount: number;
   winnerId?: string;
+  winnerIds?: string[];
   winnerName?: string;
   result?: string;
 }

@@ -27,7 +27,9 @@ export async function GET() {
     });
 
     const now = new Date();
-    const past = tournaments.filter((t) => t.date < now);
+    const past = tournaments
+      .filter((t) => t.date < now)
+      .sort((a, b) => b.date.getTime() - a.date.getTime());
     const upcoming = tournaments.filter((t) => t.date >= now);
 
     const format = (t: (typeof tournaments)[0]) => {
@@ -42,14 +44,35 @@ export async function GET() {
         scgaOfficial: r.user.scgaOfficial ?? false,
       }));
       const userById = Object.fromEntries(registeredUsers.map((u) => [u.id, u]));
-      let prizes: Array<{ name: string; amount: number; winnerId?: string; winnerName?: string; result?: string }> = [];
+      let prizes: Array<{
+        name: string;
+        amount: number;
+        winnerId?: string;
+        winnerIds?: string[];
+        winnerName?: string;
+        result?: string;
+      }> = [];
       if (t.prizes) {
         try {
           prizes = JSON.parse(t.prizes).map(
-            (p: { name: string; amount: number; winnerId?: string; result?: string }) => ({
-              ...p,
-              winnerName: p.winnerId ? userById[p.winnerId]?.fullName : undefined,
-            })
+            (p: {
+              name: string;
+              amount: number;
+              winnerId?: string;
+              winnerIds?: string[];
+              result?: string;
+            }) => {
+              let winnerName: string | undefined;
+              if (Array.isArray(p.winnerIds) && p.winnerIds.length > 0) {
+                const names = p.winnerIds
+                  .map((id) => userById[id]?.fullName)
+                  .filter(Boolean) as string[];
+                winnerName = names.length ? names.join(" / ") : undefined;
+              } else if (p.winnerId) {
+                winnerName = userById[p.winnerId]?.fullName;
+              }
+              return { ...p, winnerName };
+            }
           );
         } catch {
           prizes = [];
