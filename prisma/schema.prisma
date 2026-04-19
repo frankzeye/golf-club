@@ -23,6 +23,39 @@ model User {
   createdAt     DateTime @default(now())
   tournamentRegistrations TournamentRegistration[]
   comments      Comment[]
+  surveySelections SurveyDateSelection[]
+  surveysCreated   Survey[] @relation("SurveyCreator")
+}
+
+model Survey {
+  id            String   @id @default(cuid())
+  month         Int      // 1–12
+  year          Int
+  createdAt     DateTime @default(now())
+  createdById   String?
+  createdBy     User?    @relation("SurveyCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  options       SurveyDateOption[]
+  selections    SurveyDateSelection[]
+}
+
+model SurveyDateOption {
+  id         String   @id @default(cuid())
+  surveyId   String
+  date       DateTime @db.Date
+  survey     Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  selections SurveyDateSelection[]
+  @@unique([surveyId, date])
+}
+
+model SurveyDateSelection {
+  id       String           @id @default(cuid())
+  surveyId String
+  userId   String
+  optionId String
+  survey   Survey           @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  option   SurveyDateOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  @@unique([surveyId, userId, optionId])
 }
 
 model Tournament {

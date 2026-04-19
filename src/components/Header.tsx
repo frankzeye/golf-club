@@ -51,6 +51,12 @@ export function Header() {
                 Tee Times
               </Link>
               <Link
+                href="/surveys"
+                className="text-sm font-medium text-stone-600 hover:text-emerald-600"
+              >
+                Surveys
+              </Link>
+              <Link
                 href="/members"
                 className="text-sm font-medium text-stone-600 hover:text-emerald-600"
               >
