@@ -74,20 +74,40 @@ async function main() {
       }
 
       console.log(`  [apply] ${migrationName}`);
-      try {
-        await prisma.$executeRawUnsafe(sql);
-      } catch (err) {
-        // Tolerate "already exists" errors so the script is idempotent when
-        // objects were created outside of Prisma's migration history.
-        const msg = err.message || "";
-        const isAlreadyExists =
-          msg.includes("already exists") || msg.includes("duplicate");
-        if (!isAlreadyExists) {
-          throw err;
+
+      // Split the migration file into individual statements so that
+      // $executeRawUnsafe() — which only accepts one statement at a time —
+      // does not fail with "cannot insert multiple commands into a prepared
+      // statement".
+      const statements = sql
+        .split(";")
+        .map((s) => s.trim())
+        // Drop chunks that are empty or consist only of comments.
+        .filter((s) => {
+          if (!s) return false;
+          const stripped = s
+            .replace(/--[^\n]*/g, "")
+            .replace(/\/\*[\s\S]*?\*\//g, "")
+            .trim();
+          return stripped.length > 0;
+        });
+
+      for (const statement of statements) {
+        try {
+          await prisma.$executeRawUnsafe(statement);
+        } catch (err) {
+          // Tolerate "already exists" errors so the script is idempotent when
+          // objects were created outside of Prisma's migration history.
+          const msg = err.message || "";
+          const isAlreadyExists =
+            msg.includes("already exists") || msg.includes("duplicate");
+          if (!isAlreadyExists) {
+            throw err;
+          }
+          console.log(
+            `    (tolerated error: ${msg.split("\\n")[0]})`
+          );
         }
-        console.log(
-          `    (tolerated error: ${msg.split("\n")[0]})`
-        );
       }
 
       // Record the migration as applied.
