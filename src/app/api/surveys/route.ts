@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { formatAvailabilitySurveyTitle } from "@/lib/survey-title";
+import { ensureSurveySlug, generateNewSurveySlug } from "@/lib/survey-slug";
 
 /**
  * GET /api/surveys - List availability surveys (newest first)
@@ -16,16 +17,22 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json({
-      surveys: surveys.map((s) => ({
-        id: s.id,
-        month: s.month,
-        year: s.year,
-        title: formatAvailabilitySurveyTitle(s.month, s.year),
-        optionCount: s._count.options,
-        createdAt: s.createdAt.toISOString(),
-      })),
-    });
+    const rows = await Promise.all(
+      surveys.map(async (s) => {
+        const slug = await ensureSurveySlug(s);
+        return {
+          id: s.id,
+          slug,
+          month: s.month,
+          year: s.year,
+          title: formatAvailabilitySurveyTitle(s.month, s.year),
+          optionCount: s._count.options,
+          createdAt: s.createdAt.toISOString(),
+        };
+      })
+    );
+
+    return NextResponse.json({ surveys: rows });
   } catch (e) {
     console.error("GET /api/surveys failed:", e);
     const hint = prismaSurveyMissingHint(e);
@@ -78,16 +85,19 @@ export async function POST(request: NextRequest) {
       select: { id: true },
     });
 
+    const slug = await generateNewSurveySlug(month, year);
     const survey = await prisma.survey.create({
       data: {
         month,
         year,
+        slug,
         createdById: adminRow?.id ?? null,
       },
     });
 
     return NextResponse.json({
       id: survey.id,
+      slug: survey.slug,
       month: survey.month,
       year: survey.year,
       title: formatAvailabilitySurveyTitle(survey.month, survey.year),

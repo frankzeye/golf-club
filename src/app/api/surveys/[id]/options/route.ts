@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { findSurveyByIdOrSlug } from "@/lib/survey-slug";
 import { isYmdInCalendarMonth } from "@/lib/survey-title";
 
 /**
@@ -15,12 +16,13 @@ export async function POST(
     return NextResponse.json(error.json, { status: error.status });
   }
 
-  const { id: surveyId } = await params;
+  const { id: idOrSlug } = await params;
 
-  const survey = await prisma.survey.findUnique({ where: { id: surveyId } });
+  const survey = await findSurveyByIdOrSlug(idOrSlug);
   if (!survey) {
     return NextResponse.json({ error: "Survey not found" }, { status: 404 });
   }
+  const surveyId = survey.id;
 
   let body: { date?: string };
   try {

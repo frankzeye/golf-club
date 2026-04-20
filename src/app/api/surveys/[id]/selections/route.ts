@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { findSurveyByIdOrSlug } from "@/lib/survey-slug";
 
 /**
  * PUT /api/surveys/[id]/selections - Replace current user's date selections (any signed-in member)
@@ -15,7 +16,7 @@ export async function PUT(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id: surveyId } = await params;
+  const { id: idOrSlug } = await params;
   const userId = session.user.id;
 
   let body: { optionIds?: unknown };
@@ -33,13 +34,11 @@ export async function PUT(
     (x): x is string => typeof x === "string" && x.length > 0
   );
 
-  const survey = await prisma.survey.findUnique({
-    where: { id: surveyId },
-    include: { options: { select: { id: true } } },
-  });
+  const survey = await findSurveyByIdOrSlug(idOrSlug);
   if (!survey) {
     return NextResponse.json({ error: "Survey not found" }, { status: 404 });
   }
+  const surveyId = survey.id;
 
   const valid = new Set(survey.options.map((o) => o.id));
   for (const oid of optionIds) {

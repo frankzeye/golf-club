@@ -8,6 +8,7 @@ import { Header } from "@/components/Header";
 
 interface SurveyRow {
   id: string;
+  slug?: string;
   month: number;
   year: number;
   title: string;
@@ -79,6 +80,10 @@ export default function SurveysPage() {
         return;
       }
       setShowCreate(false);
+      if (data.slug) {
+        router.push(`/surveys/${data.slug}`);
+        return;
+      }
       if (data.id) {
         router.push(`/surveys/${data.id}`);
         return;
@@ -200,7 +205,7 @@ export default function SurveysPage() {
             surveys.map((s) => (
               <li key={s.id}>
                 <Link
-                  href={`/surveys/${s.id}`}
+                  href={`/surveys/${s.slug || s.id}`}
                   className="flex items-center justify-between gap-4 rounded-xl border border-stone-200 bg-white px-5 py-4 shadow-sm transition-colors hover:border-emerald-200 hover:bg-emerald-50/30"
                 >
                   <div>

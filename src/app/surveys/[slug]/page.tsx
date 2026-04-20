@@ -14,6 +14,7 @@ interface SurveyOption {
 
 interface SurveyDetail {
   id: string;
+  slug: string | null;
   month: number;
   year: number;
   title: string;
@@ -63,7 +64,7 @@ function formatChartAxisLabel(ymd: string) {
 export default function SurveyDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const id = params?.id as string;
+  const slugParam = params?.slug as string;
   const { data: session, status } = useSession();
   const isAdmin = session?.user?.role === "admin";
 
@@ -89,9 +90,10 @@ export default function SurveyDetailPage() {
   }, []);
 
   const loadSurvey = useCallback(() => {
-    if (!id) return;
+    if (!slugParam) return;
     setError("");
-    fetch(`/api/surveys/${id}`)
+    const pathSeg = encodeURIComponent(slugParam);
+    fetch(`/api/surveys/${pathSeg}`)
       .then((res) => {
         if (!res.ok) throw new Error("not found");
         return res.json();
@@ -99,16 +101,19 @@ export default function SurveyDetailPage() {
       .then((data: SurveyDetail) => {
         setSurvey(data);
         setSelected(new Set(data.selectedOptionIds ?? []));
+        if (data.slug && slugParam === data.id && data.slug !== data.id) {
+          router.replace(`/surveys/${data.slug}`);
+        }
       })
       .catch(() => setError("Survey not found"))
       .finally(() => setIsLoading(false));
-  }, [id]);
+  }, [slugParam, router]);
 
   useEffect(() => {
-    if (status === "loading" || !id) return;
+    if (status === "loading" || !slugParam) return;
     setIsLoading(true);
     loadSurvey();
-  }, [id, status, loadSurvey]);
+  }, [slugParam, status, loadSurvey]);
 
   const toggleOption = (optionId: string) => {
     setSelected((prev) => {
@@ -120,11 +125,12 @@ export default function SurveyDetailPage() {
   };
 
   const handleSaveSelections = async () => {
-    if (!survey || !session) return;
+    if (!survey || !session || !slugParam) return;
     setIsSaving(true);
     setError("");
     try {
-      const res = await fetch(`/api/surveys/${survey.id}/selections`, {
+      const pathSeg = encodeURIComponent(slugParam);
+      const res = await fetch(`/api/surveys/${pathSeg}/selections`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ optionIds: [...selected] }),
@@ -150,11 +156,12 @@ export default function SurveyDetailPage() {
 
   const handleAddDate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!survey || !newDate) return;
+    if (!survey || !newDate || !slugParam) return;
     setIsAddingDate(true);
     setError("");
     try {
-      const res = await fetch(`/api/surveys/${survey.id}/options`, {
+      const pathSeg = encodeURIComponent(slugParam);
+      const res = await fetch(`/api/surveys/${pathSeg}/options`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ date: newDate }),
@@ -174,11 +181,12 @@ export default function SurveyDetailPage() {
   };
 
   const handleRemoveOption = async (optionId: string) => {
-    if (!survey || !confirm("Remove this date from the survey?")) return;
+    if (!survey || !slugParam || !confirm("Remove this date from the survey?")) return;
     setRemovingOptionId(optionId);
     setError("");
     try {
-      const res = await fetch(`/api/surveys/${survey.id}/options/${optionId}`, {
+      const pathSeg = encodeURIComponent(slugParam);
+      const res = await fetch(`/api/surveys/${pathSeg}/options/${optionId}`, {
         method: "DELETE",
       });
       if (!res.ok) {
@@ -195,11 +203,12 @@ export default function SurveyDetailPage() {
   };
 
   const handleDeleteSurvey = async () => {
-    if (!survey || !confirm("Delete this entire survey? This cannot be undone.")) return;
+    if (!survey || !slugParam || !confirm("Delete this entire survey? This cannot be undone.")) return;
     setIsDeletingSurvey(true);
     setError("");
     try {
-      const res = await fetch(`/api/surveys/${survey.id}`, { method: "DELETE" });
+      const pathSeg = encodeURIComponent(slugParam);
+      const res = await fetch(`/api/surveys/${pathSeg}`, { method: "DELETE" });
       if (!res.ok) {
         const data = await res.json();
         setError(data.error ?? "Failed to delete");

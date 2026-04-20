@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions, requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { formatAvailabilitySurveyTitle } from "@/lib/survey-title";
+import { findSurveyByIdOrSlug } from "@/lib/survey-slug";
 
 /**
  * GET /api/surveys/[id] - Survey detail with date options and current user's selections
@@ -12,24 +13,21 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
-  const { id } = await params;
+  const { id: idOrSlug } = await params;
 
   try {
-    const survey = await prisma.survey.findUnique({
-      where: { id },
-      include: {
-        options: { orderBy: { date: "asc" } },
-      },
-    });
+    const survey = await findSurveyByIdOrSlug(idOrSlug);
 
     if (!survey) {
       return NextResponse.json({ error: "Survey not found" }, { status: 404 });
     }
 
+    const surveyId = survey.id;
+
     let selectedOptionIds: string[] = [];
     if (session?.user?.id) {
       const rows = await prisma.surveyDateSelection.findMany({
-        where: { surveyId: id, userId: session.user.id },
+        where: { surveyId, userId: session.user.id },
         select: { optionId: true },
       });
       selectedOptionIds = rows.map((r) => r.optionId);
@@ -38,11 +36,11 @@ export async function GET(
     const [selectionGroups, distinctResponders] = await Promise.all([
       prisma.surveyDateSelection.groupBy({
         by: ["optionId"],
-        where: { surveyId: id },
+        where: { surveyId },
         _count: { _all: true },
       }),
       prisma.surveyDateSelection.findMany({
-        where: { surveyId: id },
+        where: { surveyId },
         select: { userId: true },
         distinct: ["userId"],
       }),
@@ -54,6 +52,7 @@ export async function GET(
 
     return NextResponse.json({
       id: survey.id,
+      slug: survey.slug,
       month: survey.month,
       year: survey.year,
       title: formatAvailabilitySurveyTitle(survey.month, survey.year),
@@ -86,10 +85,14 @@ export async function DELETE(
     return NextResponse.json(error.json, { status: error.status });
   }
 
-  const { id } = await params;
+  const { id: idOrSlug } = await params;
 
   try {
-    await prisma.survey.delete({ where: { id } });
+    const survey = await findSurveyByIdOrSlug(idOrSlug);
+    if (!survey) {
+      return NextResponse.json({ error: "Survey not found" }, { status: 404 });
+    }
+    await prisma.survey.delete({ where: { id: survey.id } });
     return NextResponse.json({ ok: true });
   } catch (e) {
     if (e && typeof e === "object" && "code" in e && e.code === "P2025") {

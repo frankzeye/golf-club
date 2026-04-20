@@ -19,10 +19,12 @@ interface Member {
 }
 
 export default function MembersPage() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
+  const isAdmin = session?.user?.role === "admin";
   const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -62,16 +64,53 @@ export default function MembersPage() {
     return null;
   }
 
+  const handleExportCsv = async () => {
+    setExporting(true);
+    try {
+      const res = await fetch("/api/members/export");
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const dispo = res.headers.get("Content-Disposition");
+      const match = dispo?.match(/filename="([^"]+)"/);
+      const name = match?.[1] ?? `members-${new Date().toISOString().slice(0, 10)}.csv`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = name;
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="flex min-h-screen flex-col bg-stone-50">
       <Header />
       <div className="mx-auto w-full max-w-4xl flex-1 px-4 py-12">
-        <h1 className="font-serif text-2xl font-semibold text-stone-900">
-          Members
-        </h1>
-        <p className="mt-1 text-sm text-stone-500">
-          Club members directory
-        </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="font-serif text-2xl font-semibold text-stone-900">
+              Members
+            </h1>
+            <p className="mt-1 text-sm text-stone-500">
+              Club members directory
+            </p>
+          </div>
+          {isAdmin && members.length > 0 && (
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              disabled={exporting}
+              className="shrink-0 rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:opacity-50"
+            >
+              {exporting ? "Preparing…" : "Download CSV"}
+            </button>
+          )}
+        </div>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {members.map((member) => (

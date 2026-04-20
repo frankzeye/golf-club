@@ -29,6 +29,7 @@ model User {
 
 model Survey {
   id            String   @id @default(cuid())
+  slug          String?  @unique // URL slug from title, e.g. dates-you-can-play-in-march-2026
   month         Int      // 1–12
   year          Int
   createdAt     DateTime @default(now())
