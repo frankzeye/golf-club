@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { formatAvailabilitySurveyTitle } from "@/lib/survey-title";
 
@@ -39,12 +40,25 @@ export async function ensureSurveySlug(
   if (row.slug) return row.slug;
   const title = formatAvailabilitySurveyTitle(row.month, row.year);
   const base = slugifySurveyTitle(title);
-  const slug = await uniqueSlugForSurvey(base, row.id);
-  await prisma.survey.update({
-    where: { id: row.id },
-    data: { slug },
-  });
-  return slug;
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const slug = await uniqueSlugForSurvey(base, row.id);
+    try {
+      await prisma.survey.update({
+        where: { id: row.id },
+        data: { slug },
+      });
+      return slug;
+    } catch (e) {
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === "P2002"
+      ) {
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw new Error("Could not assign a unique survey slug");
 }
 
 export async function generateNewSurveySlug(month: number, year: number): Promise<string> {

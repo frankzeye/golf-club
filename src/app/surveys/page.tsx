@@ -43,21 +43,32 @@ export default function SurveysPage() {
   const [createYear, setCreateYear] = useState(() => new Date().getFullYear());
   const [isCreating, setIsCreating] = useState(false);
 
-  const load = useCallback(() => {
+  const load = useCallback(async () => {
     setError("");
-    fetch("/api/surveys")
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to load surveys");
-        return res.json();
-      })
-      .then((data) => {
-        setSurveys(Array.isArray(data.surveys) ? data.surveys : []);
-      })
-      .catch(() => {
-        setError("Could not load surveys.");
+    try {
+      const res = await fetch("/api/surveys");
+      let data: { surveys?: SurveyRow[]; error?: string } = {};
+      try {
+        data = await res.json();
+      } catch {
+        // non-JSON body (e.g. HTML error page)
+      }
+      if (!res.ok) {
         setSurveys([]);
-      })
-      .finally(() => setIsLoading(false));
+        setError(
+          typeof data.error === "string" && data.error
+            ? data.error
+            : `Could not load surveys (${res.status}).`
+        );
+        return;
+      }
+      setSurveys(Array.isArray(data.surveys) ? data.surveys : []);
+    } catch {
+      setError("Could not load surveys.");
+      setSurveys([]);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   useEffect(() => {

@@ -17,20 +17,21 @@ export async function GET() {
       },
     });
 
-    const rows = await Promise.all(
-      surveys.map(async (s) => {
-        const slug = await ensureSurveySlug(s);
-        return {
-          id: s.id,
-          slug,
-          month: s.month,
-          year: s.year,
-          title: formatAvailabilitySurveyTitle(s.month, s.year),
-          optionCount: s._count.options,
-          createdAt: s.createdAt.toISOString(),
-        };
-      })
-    );
+    // Assign slugs sequentially: parallel ensureSurveySlug can pick the same
+    // slug for two legacy rows (same month/year, both slug null) → P2002.
+    const rows = [];
+    for (const s of surveys) {
+      const slug = await ensureSurveySlug(s);
+      rows.push({
+        id: s.id,
+        slug,
+        month: s.month,
+        year: s.year,
+        title: formatAvailabilitySurveyTitle(s.month, s.year),
+        optionCount: s._count.options,
+        createdAt: s.createdAt.toISOString(),
+      });
+    }
 
     return NextResponse.json({ surveys: rows });
   } catch (e) {
