@@ -44,14 +44,28 @@ export async function GET() {
   }
 }
 
+const SURVEY_MIGRATE_CMD =
+  "Run `npx prisma migrate deploy` on the app (or a one-off shell) with `DATABASE_URL` pointing at this same Postgres database.";
+
 function prismaSurveyMissingHint(e: unknown): string | null {
-  if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2021") {
-    return "Survey tables are missing. Run `npx prisma migrate deploy` (or `prisma db push`) against this database.";
+  if (e instanceof Prisma.PrismaClientKnownRequestError) {
+    if (e.code === "P2021") {
+      return `Survey tables are missing. ${SURVEY_MIGRATE_CMD}`;
+    }
+    if (e.code === "P2022") {
+      return `The database is missing a column Prisma expects (often \`Survey.slug\` after a deploy). ${SURVEY_MIGRATE_CMD}`;
+    }
   }
-  if (e instanceof Error && /Survey|survey/i.test(e.message) && /does not exist/i.test(e.message)) {
-    return "Survey tables are missing. Run `npx prisma migrate deploy` (or `prisma db push`) against this database.";
+  if (!(e instanceof Error)) return null;
+  const msg = e.message;
+  if (!/does not exist/i.test(msg) || !/Survey|survey/i.test(msg)) {
+    return null;
   }
-  return null;
+  // Postgres: `column "slug" of relation "Survey" does not exist` — not "tables missing"
+  if (/\bcolumn\b/i.test(msg)) {
+    return `The database schema is behind the app (missing column on Survey or related tables). ${SURVEY_MIGRATE_CMD}`;
+  }
+  return `Survey tables are missing. ${SURVEY_MIGRATE_CMD}`;
 }
 
 /**
