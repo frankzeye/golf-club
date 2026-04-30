@@ -9,6 +9,7 @@ function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const created = searchParams?.get("created") === "1";
+  const resetOk = searchParams?.get("reset") === "1";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -76,6 +77,11 @@ function SignInForm() {
               Account created. Sign in to continue.
             </p>
           )}
+          {resetOk && (
+            <p className="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+              Your password was updated. Sign in with your new password.
+            </p>
+          )}
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div>
@@ -113,6 +119,14 @@ function SignInForm() {
                 className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 placeholder-stone-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 placeholder="Your password"
               />
+              <div className="mt-2 flex justify-end">
+                <Link
+                  href="/forgot-password"
+                  className="text-sm font-medium text-emerald-600 hover:text-emerald-700"
+                >
+                  Forgot password?
+                </Link>
+              </div>
             </div>
             {error && (
               <p className="text-sm text-red-600">{error}</p>
