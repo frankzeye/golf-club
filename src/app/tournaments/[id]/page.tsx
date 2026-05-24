@@ -56,6 +56,13 @@ interface RegisteredUser {
   paymentStatus: string;
 }
 
+interface ClubMember {
+  id: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+}
+
 interface Prize {
   name: string;
   amount: number;
@@ -154,6 +161,10 @@ export default function TournamentDetailPage() {
   const [prizeWinnerSelections, setPrizeWinnerSelections] = useState<string[][]>([]);
   const [prizeResults, setPrizeResults] = useState<string[]>([]);
   const [isSavingWinners, setIsSavingWinners] = useState(false);
+  const [clubMembers, setClubMembers] = useState<ClubMember[]>([]);
+  const [addMemberUserId, setAddMemberUserId] = useState("");
+  const [addMemberMarkAsPaid, setAddMemberMarkAsPaid] = useState(false);
+  const [isAddingMember, setIsAddingMember] = useState(false);
 
   const loadComments = useCallback(() => {
     if (!id) return;
@@ -224,6 +235,28 @@ export default function TournamentDetailPage() {
       a.fullName.localeCompare(b.fullName, undefined, { sensitivity: "base" })
     );
   }, [tournament?.registeredUsers]);
+
+  const isAdmin = session?.user?.role === "admin";
+
+  const availableMembersToAdd = useMemo(() => {
+    if (!tournament) return [];
+    const registeredIds = new Set(tournament.registeredUsers.map((u) => u.id));
+    return clubMembers
+      .filter((m) => !registeredIds.has(m.id))
+      .sort((a, b) =>
+        a.fullName.localeCompare(b.fullName, undefined, { sensitivity: "base" })
+      );
+  }, [clubMembers, tournament]);
+
+  useEffect(() => {
+    if (status !== "authenticated" || !isAdmin || !tournament) return;
+    const isUpcoming = new Date(tournament.date + "T23:59:59") >= new Date();
+    if (!isUpcoming) return;
+    fetch("/api/members")
+      .then((res) => (res.ok ? res.json() : []))
+      .then(setClubMembers)
+      .catch(() => setClubMembers([]));
+  }, [status, isAdmin, tournament]);
 
   const handleSubmitComment = async (e: React.FormEvent, parentId?: string) => {
     e.preventDefault();
@@ -500,6 +533,38 @@ export default function TournamentDetailPage() {
     }
   };
 
+  const handleAdminAddMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tournament || !addMemberUserId) return;
+    setIsAddingMember(true);
+    setError("");
+    try {
+      const res = await fetch(
+        `/api/tournaments/${tournament.id}/registrations`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: addMemberUserId,
+            markAsPaid: addMemberMarkAsPaid,
+          }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Failed to add member");
+        return;
+      }
+      setAddMemberUserId("");
+      setAddMemberMarkAsPaid(false);
+      loadTournament();
+    } catch {
+      setError("Failed to add member");
+    } finally {
+      setIsAddingMember(false);
+    }
+  };
+
   const formatCurrency = (n: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
 
@@ -561,7 +626,11 @@ export default function TournamentDetailPage() {
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const canRecordWinners = tournamentDateStr <= todayStr; // true on tournament day or after
   const isFull = tournament.registeredCount >= tournament.availableSpots;
-  const isAdmin = session?.user?.role === "admin";
+  const hasBuyIn =
+    (tournament.greenFee ?? 0) +
+      (tournament.prizePool ?? 0) +
+      (tournament.clubDonation ?? 0) >
+    0;
 
   return (
     <div className="flex min-h-screen flex-col bg-stone-50">
@@ -1184,13 +1253,71 @@ export default function TournamentDetailPage() {
             <p className="mt-4 text-sm text-red-600">{error}</p>
           )}
 
-          {tournament.registeredUsers.length > 0 && (
+          {(tournament.registeredUsers.length > 0 || (isAdmin && isUpcoming)) && (
             <div className="mt-8 border-t border-stone-200 pt-6">
               <h2 className="text-sm font-semibold text-stone-900">
                 Registered ({tournament.registeredUsers.length})
               </h2>
+              {isAdmin && isUpcoming && !isFull && (
+                <form
+                  onSubmit={handleAdminAddMember}
+                  className="mt-4 rounded-lg border border-stone-200 bg-stone-50 p-4"
+                >
+                  <p className="text-xs font-medium text-stone-600">Add member</p>
+                  <div className="mt-3 flex flex-wrap items-end gap-3">
+                    <div className="min-w-[200px] flex-1">
+                      <label className="block text-xs font-medium text-stone-600">
+                        Member
+                      </label>
+                      <select
+                        value={addMemberUserId}
+                        onChange={(e) => setAddMemberUserId(e.target.value)}
+                        className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      >
+                        <option value="">— Select member —</option>
+                        {availableMembersToAdd.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.fullName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {hasBuyIn && (
+                      <label className="flex items-center gap-2 pb-2 text-sm text-stone-700">
+                        <input
+                          type="checkbox"
+                          checked={addMemberMarkAsPaid}
+                          onChange={(e) => setAddMemberMarkAsPaid(e.target.checked)}
+                          className="rounded border-stone-300 text-emerald-600 focus:ring-emerald-500"
+                        />
+                        Mark as paid
+                      </label>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={isAddingMember || !addMemberUserId}
+                      className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                    >
+                      {isAddingMember ? "Adding…" : "Add"}
+                    </button>
+                  </div>
+                  {availableMembersToAdd.length === 0 && (
+                    <p className="mt-2 text-xs text-stone-500">
+                      All club members are already registered.
+                    </p>
+                  )}
+                </form>
+              )}
+              {isAdmin && isUpcoming && isFull && (
+                <p className="mt-3 text-xs text-stone-500">
+                  Tournament is full — remove a registration to add someone else.
+                </p>
+              )}
               <div className="mt-3 space-y-2">
-                {tournament.registeredUsers.map((u) => (
+                {tournament.registeredUsers.length === 0 ? (
+                  <p className="text-sm text-stone-500">No one registered yet.</p>
+                ) : (
+                tournament.registeredUsers.map((u) => (
                   <div
                     key={u.id}
                     className="flex items-center justify-between gap-3 rounded-lg border border-stone-200 px-3 py-2"
@@ -1265,7 +1392,8 @@ export default function TournamentDetailPage() {
                       )}
                     </div>
                   </div>
-                ))}
+                ))
+                )}
               </div>
             </div>
           )}
