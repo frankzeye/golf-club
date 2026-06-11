@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { formatAvailabilitySurveyTitle } from "@/lib/survey-title";
+import { surveyDisplayTitle } from "@/lib/survey-title";
 import { findSurveyByIdOrSlug } from "@/lib/survey-slug";
 
 type Props = {
@@ -10,9 +10,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const survey = await findSurveyByIdOrSlug(slug);
 
-  const title = survey
-    ? formatAvailabilitySurveyTitle(survey.month, survey.year)
-    : "Survey";
+  const title = survey ? surveyDisplayTitle(survey) : "Survey";
 
   return { title };
 }

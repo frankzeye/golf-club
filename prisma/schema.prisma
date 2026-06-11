@@ -43,8 +43,11 @@ model PasswordResetToken {
 model Survey {
   id            String   @id @default(cuid())
   slug          String?  @unique // URL slug from title, e.g. dates-you-can-play-in-march-2026
-  month         Int      // 1–12
-  year          Int
+  type          String   @default("availability") // "availability" | "multiple_choice"
+  title         String?  // custom question for multiple_choice; availability titles are computed from month/year
+  allowMultiple Boolean  @default(true) // multiple_choice: can members pick more than one option?
+  month         Int?     // 1–12 (availability only)
+  year          Int?     // (availability only)
   createdAt     DateTime @default(now())
   createdById   String?
   createdBy     User?    @relation("SurveyCreator", fields: [createdById], references: [id], onDelete: SetNull)
@@ -53,12 +56,16 @@ model Survey {
 }
 
 model SurveyDateOption {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   surveyId   String
-  date       DateTime @db.Date
-  survey     Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  date       DateTime? @db.Date // availability options
+  label      String?   // multiple_choice options
+  imageUrl   String?   // multiple_choice options may be a thumbnail image instead of (or with) text
+  sortOrder  Int       @default(0)
+  survey     Survey    @relation(fields: [surveyId], references: [id], onDelete: Cascade)
   selections SurveyDateSelection[]
   @@unique([surveyId, date])
+  @@unique([surveyId, label])
 }
 
 model SurveyDateSelection {

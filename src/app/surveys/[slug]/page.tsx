@@ -5,18 +5,30 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Header } from "@/components/Header";
+import { AvatarWithSash } from "@/components/AvatarWithSash";
+
+interface SurveyResponder {
+  id: string;
+  fullName: string;
+  imageUrl: string | null;
+}
 
 interface SurveyOption {
   id: string;
-  date: string;
+  date: string | null;
+  label?: string | null;
+  imageUrl?: string | null;
   responseCount?: number;
+  responders?: SurveyResponder[];
 }
 
 interface SurveyDetail {
   id: string;
   slug: string | null;
-  month: number;
-  year: number;
+  type?: string;
+  allowMultiple?: boolean;
+  month: number | null;
+  year: number | null;
   title: string;
   options: SurveyOption[];
   selectedOptionIds: string[];
@@ -74,6 +86,9 @@ export default function SurveyDetailPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
   const [newDate, setNewDate] = useState("");
+  const [newOptionLabel, setNewOptionLabel] = useState("");
+  const [newOptionImageUrl, setNewOptionImageUrl] = useState<string | null>(null);
+  const [isUploadingOptionImage, setIsUploadingOptionImage] = useState(false);
   const [isAddingDate, setIsAddingDate] = useState(false);
   const [removingOptionId, setRemovingOptionId] = useState<string | null>(null);
   const [isDeletingSurvey, setIsDeletingSurvey] = useState(false);
@@ -115,8 +130,12 @@ export default function SurveyDetailPage() {
     loadSurvey();
   }, [slugParam, status, loadSurvey]);
 
+  const isMultipleChoice = survey?.type === "multiple_choice";
+  const singleSelect = isMultipleChoice && survey?.allowMultiple === false;
+
   const toggleOption = (optionId: string) => {
     setSelected((prev) => {
+      if (singleSelect) return new Set([optionId]);
       const next = new Set(prev);
       if (next.has(optionId)) next.delete(optionId);
       else next.add(optionId);
@@ -154,9 +173,13 @@ export default function SurveyDetailPage() {
     }
   };
 
-  const handleAddDate = async (e: React.FormEvent) => {
+  const handleAddOption = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!survey || !newDate || !slugParam) return;
+    if (!survey || !slugParam) return;
+    const body = isMultipleChoice
+      ? { label: newOptionLabel.trim(), imageUrl: newOptionImageUrl ?? undefined }
+      : { date: newDate };
+    if (isMultipleChoice ? !newOptionLabel.trim() && !newOptionImageUrl : !newDate) return;
     setIsAddingDate(true);
     setError("");
     try {
@@ -164,24 +187,52 @@ export default function SurveyDetailPage() {
       const res = await fetch(`/api/surveys/${pathSeg}/options`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: newDate }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "Failed to add date");
+        setError(data.error ?? "Failed to add option");
         return;
       }
       setNewDate("");
+      setNewOptionLabel("");
+      setNewOptionImageUrl(null);
       loadSurvey();
     } catch {
-      setError("Failed to add date");
+      setError("Failed to add option");
     } finally {
       setIsAddingDate(false);
     }
   };
 
+  const handleUploadNewOptionImage = async (file: File) => {
+    setIsUploadingOptionImage(true);
+    setError("");
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const res = await fetch("/api/surveys/option-image", {
+        method: "POST",
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Failed to upload image");
+        return;
+      }
+      setNewOptionImageUrl(data.imageUrl);
+    } catch {
+      setError("Failed to upload image");
+    } finally {
+      setIsUploadingOptionImage(false);
+    }
+  };
+
   const handleRemoveOption = async (optionId: string) => {
-    if (!survey || !slugParam || !confirm("Remove this date from the survey?")) return;
+    const confirmMsg = isMultipleChoice
+      ? "Remove this option from the survey?"
+      : "Remove this date from the survey?";
+    if (!survey || !slugParam || !confirm(confirmMsg)) return;
     setRemovingOptionId(optionId);
     setError("");
     try {
@@ -265,7 +316,13 @@ export default function SurveyDetailPage() {
 
   if (!survey) return null;
 
-  const bounds = dateBoundsForMonth(survey.month, survey.year);
+  const bounds = dateBoundsForMonth(survey.month ?? 1, survey.year ?? 2000);
+  const hasImageOptions =
+    isMultipleChoice && survey.options.some((o) => o.imageUrl);
+  const optionLabel = (o: SurveyOption) =>
+    o.label ?? (o.date ? formatDateLabel(o.date) : "—");
+  const optionAxisLabel = (o: SurveyOption) =>
+    o.label ?? (o.date ? formatChartAxisLabel(o.date) : "—");
   const responseMax = Math.max(
     1,
     ...survey.options.map((o) => o.responseCount ?? 0)
@@ -291,7 +348,11 @@ export default function SurveyDetailPage() {
           <div>
             <h1 className="font-serif text-2xl font-semibold text-stone-900">{survey.title}</h1>
             <p className="mt-1 text-sm text-stone-600">
-              Select every date you can play. You can change your answers anytime.
+              {isMultipleChoice
+                ? singleSelect
+                  ? "Pick one option. You can change your answer anytime."
+                  : "Select every option that applies. You can change your answers anytime."
+                : "Select every date you can play. You can change your answers anytime."}
             </p>
           </div>
           {isAdmin && (
@@ -310,41 +371,159 @@ export default function SurveyDetailPage() {
 
         {isAdmin && (
           <section className="mt-8 rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
-            <h2 className="text-sm font-semibold text-stone-900">Add date options</h2>
+            <h2 className="text-sm font-semibold text-stone-900">
+              {isMultipleChoice ? "Add answer options" : "Add date options"}
+            </h2>
             <p className="mt-1 text-xs text-stone-500">
-              Dates must fall in {survey.month}/{survey.year}.
+              {isMultipleChoice
+                ? "Add another answer members can choose from — text, a thumbnail image, or both."
+                : `Dates must fall in ${survey.month}/${survey.year}.`}
             </p>
-            <form onSubmit={handleAddDate} className="mt-4 flex flex-wrap items-end gap-3">
-              <div>
-                <label className="block text-xs font-medium text-stone-600">Date</label>
-                <input
-                  type="date"
-                  min={bounds.min}
-                  max={bounds.max}
-                  value={newDate}
-                  onChange={(e) => setNewDate(e.target.value)}
-                  className="mt-1 rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                />
-              </div>
+            <form onSubmit={handleAddOption} className="mt-4 flex flex-wrap items-end gap-3">
+              {isMultipleChoice ? (
+                <>
+                  {newOptionImageUrl ? (
+                    <div className="relative shrink-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={newOptionImageUrl}
+                        alt="New option"
+                        className="h-12 w-12 rounded-lg border border-stone-200 object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setNewOptionImageUrl(null)}
+                        aria-label="Remove image"
+                        className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-stone-700 text-[10px] leading-none text-white hover:bg-stone-900"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <input
+                        type="file"
+                        id="new-option-image"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleUploadNewOptionImage(file);
+                          e.target.value = "";
+                        }}
+                        disabled={isUploadingOptionImage}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor="new-option-image"
+                        className="flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-dashed border-stone-300 text-[10px] font-medium text-stone-500 hover:border-emerald-400 hover:text-emerald-600"
+                      >
+                        {isUploadingOptionImage ? "…" : "+ Img"}
+                      </label>
+                    </>
+                  )}
+                  <div className="min-w-[240px] flex-1">
+                    <label className="block text-xs font-medium text-stone-600">Option</label>
+                    <input
+                      type="text"
+                      value={newOptionLabel}
+                      onChange={(e) => setNewOptionLabel(e.target.value)}
+                      maxLength={200}
+                      placeholder={newOptionImageUrl ? "Caption (optional)" : "New answer option"}
+                      className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 placeholder-stone-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <label className="block text-xs font-medium text-stone-600">Date</label>
+                  <input
+                    type="date"
+                    min={bounds.min}
+                    max={bounds.max}
+                    value={newDate}
+                    onChange={(e) => setNewDate(e.target.value)}
+                    className="mt-1 rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+              )}
               <button
                 type="submit"
-                disabled={isAddingDate || !newDate}
+                disabled={
+                  isAddingDate ||
+                  isUploadingOptionImage ||
+                  (isMultipleChoice ? !newOptionLabel.trim() && !newOptionImageUrl : !newDate)
+                }
                 className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
               >
-                {isAddingDate ? "Adding…" : "Add date"}
+                {isAddingDate ? "Adding…" : isMultipleChoice ? "Add option" : "Add date"}
               </button>
             </form>
           </section>
         )}
 
         <section className="mt-8 rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
-          <h2 className="text-sm font-semibold text-stone-900">Your availability</h2>
+          <h2 className="text-sm font-semibold text-stone-900">
+            {isMultipleChoice ? "Your answer" : "Your availability"}
+          </h2>
           {survey.options.length === 0 ? (
             <p className="mt-3 text-sm text-stone-500">
               {isAdmin
-                ? "Add dates above so members can respond."
-                : "No dates have been added yet. Check back later."}
+                ? `Add ${isMultipleChoice ? "options" : "dates"} above so members can respond.`
+                : `No ${isMultipleChoice ? "options" : "dates"} have been added yet. Check back later.`}
             </p>
+          ) : hasImageOptions ? (
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4">
+              {survey.options.map((o) => {
+                const isSelected = selected.has(o.id);
+                return (
+                  <div key={o.id} className="relative">
+                    <button
+                      type="button"
+                      onClick={() => toggleOption(o.id)}
+                      aria-pressed={isSelected}
+                      className={`w-full overflow-hidden rounded-xl border-2 bg-stone-50 text-left transition-all ${
+                        isSelected
+                          ? "border-emerald-500 ring-2 ring-emerald-200"
+                          : "border-stone-200 hover:border-emerald-300"
+                      }`}
+                    >
+                      {o.imageUrl ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={o.imageUrl}
+                          alt={o.label || "Answer option"}
+                          className="aspect-square w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex aspect-square w-full items-center justify-center px-3 text-center text-sm font-medium text-stone-900">
+                          {optionLabel(o)}
+                        </div>
+                      )}
+                      {o.label && o.imageUrl && (
+                        <p className="px-3 py-2 text-sm font-medium text-stone-900">
+                          {o.label}
+                        </p>
+                      )}
+                    </button>
+                    {isSelected && (
+                      <span className="pointer-events-none absolute left-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-emerald-600 text-sm font-bold text-white shadow">
+                        ✓
+                      </span>
+                    )}
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveOption(o.id)}
+                        disabled={removingOptionId === o.id}
+                        className="absolute right-2 top-2 rounded-md border border-stone-300 bg-white/90 px-2 py-1 text-xs font-medium text-stone-600 shadow-sm hover:bg-white disabled:opacity-50"
+                      >
+                        {removingOptionId === o.id ? "…" : "Remove"}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           ) : (
             <ul className="mt-4 space-y-2">
               {survey.options.map((o) => (
@@ -354,12 +533,17 @@ export default function SurveyDetailPage() {
                 >
                   <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
                     <input
-                      type="checkbox"
+                      type={singleSelect ? "radio" : "checkbox"}
+                      name={singleSelect ? "survey-answer" : undefined}
                       checked={selected.has(o.id)}
                       onChange={() => toggleOption(o.id)}
-                      className="h-4 w-4 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500"
+                      className={`h-4 w-4 shrink-0 border-stone-300 text-emerald-600 focus:ring-emerald-500 ${
+                        singleSelect ? "" : "rounded"
+                      }`}
                     />
-                    <span className="text-sm font-medium text-stone-900">{formatDateLabel(o.date)}</span>
+                    {(o.label || o.date || !o.imageUrl) && (
+                      <span className="text-sm font-medium text-stone-900">{optionLabel(o)}</span>
+                    )}
                   </label>
                   {isAdmin && (
                     <button
@@ -391,7 +575,11 @@ export default function SurveyDetailPage() {
           <section className="mt-8 rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
             <h2 className="text-sm font-semibold text-stone-900">Responses so far</h2>
             <p className="mt-1 text-xs text-stone-500">
-              Each bar is how many members selected that date (you can pick multiple dates).{" "}
+              {isMultipleChoice
+                ? singleSelect
+                  ? "Each bar is how many members picked that option."
+                  : "Each bar is how many members selected that option (you can pick multiple)."
+                : "Each bar is how many members selected that date (you can pick multiple dates)."}{" "}
               <span className="text-stone-600">
                 {uniqueResponders} member{uniqueResponders === 1 ? "" : "s"} with at least one
                 answer · {totalSelections} total selection{totalSelections === 1 ? "" : "s"}
@@ -400,14 +588,22 @@ export default function SurveyDetailPage() {
             {totalSelections === 0 ? (
               <p className="mt-6 text-sm text-stone-500">No responses yet.</p>
             ) : (
-              <div className="mt-6 space-y-3" role="img" aria-label="Survey responses by date">
+              <div className="mt-6 space-y-3" role="img" aria-label="Survey responses by option">
                 {survey.options.map((o) => {
                   const count = o.responseCount ?? 0;
                   const pct = Math.round((count / responseMax) * 100);
                   return (
                     <div key={o.id} className="grid gap-1.5 sm:grid-cols-[minmax(0,7.5rem)_1fr] sm:items-center">
-                      <span className="text-xs font-medium text-stone-600 sm:text-right">
-                        {formatChartAxisLabel(o.date)}
+                      <span className="flex items-center gap-2 text-xs font-medium text-stone-600 sm:justify-end sm:text-right">
+                        {o.imageUrl && (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={o.imageUrl}
+                            alt={o.label || "Answer option"}
+                            className="h-12 w-12 shrink-0 rounded-md border border-stone-200 object-cover"
+                          />
+                        )}
+                        {(o.label || o.date || !o.imageUrl) && optionAxisLabel(o)}
                       </span>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
@@ -421,6 +617,25 @@ export default function SurveyDetailPage() {
                             {count}
                           </span>
                         </div>
+                        {isAdmin && (o.responders?.length ?? 0) > 0 && (
+                          <div className="mt-1.5 flex flex-wrap gap-1.5">
+                            {o.responders!.map((r) => (
+                              <Link
+                                key={r.id}
+                                href={`/members/${r.id}`}
+                                className="flex items-center gap-1.5 rounded-full border border-stone-200 bg-stone-50 py-0.5 pl-0.5 pr-2 text-xs font-medium text-stone-700 transition-colors hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
+                              >
+                                <AvatarWithSash
+                                  imageUrl={r.imageUrl}
+                                  alt={r.fullName}
+                                  size="sm"
+                                  fallback={r.fullName[0]?.toUpperCase() ?? "?"}
+                                />
+                                {r.fullName}
+                              </Link>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );

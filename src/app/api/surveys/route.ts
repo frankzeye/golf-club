@@ -2,16 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { formatAvailabilitySurveyTitle } from "@/lib/survey-title";
+import { formatAvailabilitySurveyTitle, surveyDisplayTitle } from "@/lib/survey-title";
 import { ensureSurveySlug, generateNewSurveySlug } from "@/lib/survey-slug";
 
 /**
- * GET /api/surveys - List availability surveys (newest first)
+ * GET /api/surveys - List surveys (newest first)
  */
 export async function GET() {
   try {
     const surveys = await prisma.survey.findMany({
-      orderBy: [{ year: "desc" }, { month: "desc" }, { createdAt: "desc" }],
+      orderBy: { createdAt: "desc" },
       include: {
         _count: { select: { options: true } },
       },
@@ -25,9 +25,10 @@ export async function GET() {
       rows.push({
         id: s.id,
         slug,
+        type: s.type,
         month: s.month,
         year: s.year,
-        title: formatAvailabilitySurveyTitle(s.month, s.year),
+        title: surveyDisplayTitle(s),
         optionCount: s._count.options,
         createdAt: s.createdAt.toISOString(),
       });
@@ -69,7 +70,10 @@ function prismaSurveyMissingHint(e: unknown): string | null {
 }
 
 /**
- * POST /api/surveys - Create survey for a calendar month (admin only)
+ * POST /api/surveys - Create a survey (admin only)
+ *
+ * Availability: { type?: "availability", month, year }
+ * Multiple choice: { type: "multiple_choice", title, options: Array<string | { label?, imageUrl? }>, allowMultiple?: boolean }
  */
 export async function POST(request: NextRequest) {
   const { session, error } = await requireAdmin();
@@ -77,20 +81,79 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(error.json, { status: error.status });
   }
 
-  let body: { month?: number; year?: number };
+  let body: {
+    type?: string;
+    month?: number;
+    year?: number;
+    title?: string;
+    options?: unknown;
+    allowMultiple?: boolean;
+  };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const month = Number(body.month);
-  const year = Number(body.year);
-  if (!Number.isInteger(month) || month < 1 || month > 12) {
-    return NextResponse.json({ error: "month must be 1–12" }, { status: 400 });
-  }
-  if (!Number.isInteger(year) || year < 2000 || year > 2100) {
-    return NextResponse.json({ error: "Invalid year" }, { status: 400 });
+  const type = body.type === "multiple_choice" ? "multiple_choice" : "availability";
+
+  let month: number | null = null;
+  let year: number | null = null;
+  let title: string | null = null;
+  let allowMultiple = true;
+  let parsedOptions: { label: string | null; imageUrl: string | null }[] = [];
+
+  if (type === "availability") {
+    month = Number(body.month);
+    year = Number(body.year);
+    if (!Number.isInteger(month) || month < 1 || month > 12) {
+      return NextResponse.json({ error: "month must be 1–12" }, { status: 400 });
+    }
+    if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+      return NextResponse.json({ error: "Invalid year" }, { status: 400 });
+    }
+  } else {
+    title = typeof body.title === "string" ? body.title.trim() : "";
+    if (!title) {
+      return NextResponse.json({ error: "Question is required" }, { status: 400 });
+    }
+    if (title.length > 200) {
+      return NextResponse.json(
+        { error: "Question must be 200 characters or fewer" },
+        { status: 400 }
+      );
+    }
+    const raw = Array.isArray(body.options) ? body.options : [];
+    const seen = new Set<string>();
+    for (const o of raw) {
+      let label: string | null = null;
+      let imageUrl: string | null = null;
+      if (typeof o === "string") {
+        label = o.trim().slice(0, 200) || null;
+      } else if (o && typeof o === "object") {
+        const rec = o as { label?: unknown; imageUrl?: unknown };
+        label =
+          typeof rec.label === "string" ? rec.label.trim().slice(0, 200) || null : null;
+        imageUrl =
+          typeof rec.imageUrl === "string" && /^https?:\/\//.test(rec.imageUrl)
+            ? rec.imageUrl
+            : null;
+      }
+      if (!label && !imageUrl) continue;
+      if (label) {
+        const key = label.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+      }
+      parsedOptions.push({ label, imageUrl });
+    }
+    if (parsedOptions.length < 2) {
+      return NextResponse.json(
+        { error: "Add at least two answer options" },
+        { status: 400 }
+      );
+    }
+    allowMultiple = body.allowMultiple === true;
   }
 
   try {
@@ -100,22 +163,39 @@ export async function POST(request: NextRequest) {
       select: { id: true },
     });
 
-    const slug = await generateNewSurveySlug(month, year);
+    const displayTitle =
+      type === "availability"
+        ? formatAvailabilitySurveyTitle(month!, year!)
+        : title!;
+    const slug = await generateNewSurveySlug(displayTitle);
     const survey = await prisma.survey.create({
       data: {
+        type,
         month,
         year,
+        title,
+        allowMultiple,
         slug,
         createdById: adminRow?.id ?? null,
+        ...(parsedOptions.length > 0 && {
+          options: {
+            create: parsedOptions.map((o, idx) => ({
+              label: o.label,
+              imageUrl: o.imageUrl,
+              sortOrder: idx,
+            })),
+          },
+        }),
       },
     });
 
     return NextResponse.json({
       id: survey.id,
       slug: survey.slug,
+      type: survey.type,
       month: survey.month,
       year: survey.year,
-      title: formatAvailabilitySurveyTitle(survey.month, survey.year),
+      title: surveyDisplayTitle(survey),
     });
   } catch (e) {
     console.error("POST /api/surveys failed:", e);

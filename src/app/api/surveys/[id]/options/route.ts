@@ -5,7 +5,9 @@ import { findSurveyByIdOrSlug } from "@/lib/survey-slug";
 import { isYmdInCalendarMonth } from "@/lib/survey-title";
 
 /**
- * POST /api/surveys/[id]/options - Add a date option (admin only). Date must fall in the survey's month/year.
+ * POST /api/surveys/[id]/options - Add an option (admin only).
+ * Availability surveys: { date: "YYYY-MM-DD" } within the survey's month/year.
+ * Multiple choice surveys: { label: string }.
  */
 export async function POST(
   request: NextRequest,
@@ -24,15 +26,65 @@ export async function POST(
   }
   const surveyId = survey.id;
 
-  let body: { date?: string };
+  let body: { date?: string; label?: string; imageUrl?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
+  if (survey.type === "multiple_choice") {
+    const label =
+      typeof body.label === "string" ? body.label.trim().slice(0, 200) : "";
+    const imageUrl =
+      typeof body.imageUrl === "string" && /^https?:\/\//.test(body.imageUrl)
+        ? body.imageUrl
+        : "";
+    if (!label && !imageUrl) {
+      return NextResponse.json(
+        { error: "Add option text or an image" },
+        { status: 400 }
+      );
+    }
+
+    const maxSortOrder = survey.options.reduce(
+      (max, o) => Math.max(max, o.sortOrder),
+      -1
+    );
+
+    try {
+      const option = await prisma.surveyDateOption.create({
+        data: {
+          surveyId,
+          label: label || null,
+          imageUrl: imageUrl || null,
+          sortOrder: maxSortOrder + 1,
+        },
+      });
+      return NextResponse.json({
+        id: option.id,
+        label: option.label,
+        imageUrl: option.imageUrl,
+      });
+    } catch (e) {
+      if (e && typeof e === "object" && "code" in e && e.code === "P2002") {
+        return NextResponse.json(
+          { error: "That option already exists for this survey" },
+          { status: 400 }
+        );
+      }
+      console.error("POST /api/surveys/[id]/options failed:", e);
+      return NextResponse.json({ error: "Failed to add option" }, { status: 500 });
+    }
+  }
+
   const dateStr = typeof body.date === "string" ? body.date.trim() : "";
-  if (!dateStr || !isYmdInCalendarMonth(dateStr, survey.month, survey.year)) {
+  if (
+    !dateStr ||
+    survey.month == null ||
+    survey.year == null ||
+    !isYmdInCalendarMonth(dateStr, survey.month, survey.year)
+  ) {
     return NextResponse.json(
       {
         error: `Date must be in ${survey.month}/${survey.year} (YYYY-MM-DD within that month)`,
@@ -50,7 +102,7 @@ export async function POST(
 
     return NextResponse.json({
       id: option.id,
-      date: option.date.toISOString().slice(0, 10),
+      date: option.date!.toISOString().slice(0, 10),
     });
   } catch (e) {
     if (e && typeof e === "object" && "code" in e && e.code === "P2002") {

@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { formatAvailabilitySurveyTitle } from "@/lib/survey-title";
+import { surveyDisplayTitle } from "@/lib/survey-title";
 
 /** Lowercase, non-alphanumeric → dashes, for URL paths. */
 export function slugifySurveyTitle(title: string): string {
@@ -34,11 +34,16 @@ export async function uniqueSlugForSurvey(
 }
 
 /** Persist a slug for this survey row if missing; returns final slug. */
-export async function ensureSurveySlug(
-  row: Pick<{ id: string; month: number; year: number; slug: string | null }, "id" | "month" | "year" | "slug">
-): Promise<string> {
+export async function ensureSurveySlug(row: {
+  id: string;
+  type?: string | null;
+  title?: string | null;
+  month: number | null;
+  year: number | null;
+  slug: string | null;
+}): Promise<string> {
   if (row.slug) return row.slug;
-  const title = formatAvailabilitySurveyTitle(row.month, row.year);
+  const title = surveyDisplayTitle(row);
   const base = slugifySurveyTitle(title);
   for (let attempt = 0; attempt < 12; attempt++) {
     const slug = await uniqueSlugForSurvey(base, row.id);
@@ -61,25 +66,31 @@ export async function ensureSurveySlug(
   throw new Error("Could not assign a unique survey slug");
 }
 
-export async function generateNewSurveySlug(month: number, year: number): Promise<string> {
-  const base = slugifySurveyTitle(formatAvailabilitySurveyTitle(month, year));
+export async function generateNewSurveySlug(title: string): Promise<string> {
+  const base = slugifySurveyTitle(title);
   return uniqueSlugForSurvey(base);
 }
 
 /**
  * Resolve survey by internal id or public slug; lazily assigns slug for legacy rows.
  */
+const OPTION_ORDER = [
+  { date: "asc" as const },
+  { sortOrder: "asc" as const },
+  { id: "asc" as const },
+];
+
 export async function findSurveyByIdOrSlug(idOrSlug: string) {
   const survey = await prisma.survey.findFirst({
     where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
-    include: { options: { orderBy: { date: "asc" } } },
+    include: { options: { orderBy: OPTION_ORDER } },
   });
   if (!survey) return null;
   if (!survey.slug) {
     await ensureSurveySlug(survey);
     return prisma.survey.findUnique({
       where: { id: survey.id },
-      include: { options: { orderBy: { date: "asc" } } },
+      include: { options: { orderBy: OPTION_ORDER } },
     });
   }
   return survey;

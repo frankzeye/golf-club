@@ -4,6 +4,22 @@ export function formatAvailabilitySurveyTitle(month: number, year: number): stri
   return `Dates You Can Play in ${label} ${year}`;
 }
 
+/** Display title for any survey type: custom title for multiple choice, computed month/year title for availability. */
+export function surveyDisplayTitle(s: {
+  type?: string | null;
+  title?: string | null;
+  month?: number | null;
+  year?: number | null;
+}): string {
+  if (s.type === "multiple_choice") {
+    return s.title?.trim() || "Survey";
+  }
+  if (s.month != null && s.year != null) {
+    return formatAvailabilitySurveyTitle(s.month, s.year);
+  }
+  return s.title?.trim() || "Survey";
+}
+
 /** `dateStr` must be `YYYY-MM-DD`. */
 export function isYmdInCalendarMonth(
   dateStr: string,

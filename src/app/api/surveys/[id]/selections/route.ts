@@ -40,6 +40,13 @@ export async function PUT(
   }
   const surveyId = survey.id;
 
+  if (survey.type === "multiple_choice" && !survey.allowMultiple && optionIds.length > 1) {
+    return NextResponse.json(
+      { error: "This survey only allows one answer" },
+      { status: 400 }
+    );
+  }
+
   const valid = new Set(survey.options.map((o) => o.id));
   for (const oid of optionIds) {
     if (!valid.has(oid)) {

@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions, requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { formatAvailabilitySurveyTitle } from "@/lib/survey-title";
+import { surveyDisplayTitle } from "@/lib/survey-title";
 import { findSurveyByIdOrSlug } from "@/lib/survey-slug";
+import { deleteSurveyOptionImages } from "@/lib/survey-images";
 
 /**
  * GET /api/surveys/[id] - Survey detail with date options and current user's selections
@@ -50,16 +51,48 @@ export async function GET(
       selectionGroups.map((g) => [g.optionId, g._count._all])
     );
 
+    // Admins can see who picked each option
+    const isAdmin = session?.user?.role === "admin";
+    const respondersByOptionId: Record<
+      string,
+      { id: string; fullName: string; imageUrl: string | null }[]
+    > = {};
+    if (isAdmin) {
+      const rows = await prisma.surveyDateSelection.findMany({
+        where: { surveyId },
+        select: {
+          optionId: true,
+          user: {
+            select: { id: true, firstName: true, lastName: true, imageUrl: true },
+          },
+        },
+        orderBy: [{ user: { lastName: "asc" } }, { user: { firstName: "asc" } }],
+      });
+      for (const r of rows) {
+        (respondersByOptionId[r.optionId] ??= []).push({
+          id: r.user.id,
+          fullName:
+            [r.user.firstName, r.user.lastName].filter(Boolean).join(" ") || "—",
+          imageUrl: r.user.imageUrl,
+        });
+      }
+    }
+
     return NextResponse.json({
       id: survey.id,
       slug: survey.slug,
+      type: survey.type,
+      allowMultiple: survey.allowMultiple,
       month: survey.month,
       year: survey.year,
-      title: formatAvailabilitySurveyTitle(survey.month, survey.year),
+      title: surveyDisplayTitle(survey),
       options: survey.options.map((o) => ({
         id: o.id,
-        date: o.date.toISOString().slice(0, 10),
+        date: o.date ? o.date.toISOString().slice(0, 10) : null,
+        label: o.label,
+        imageUrl: o.imageUrl,
         responseCount: countByOptionId[o.id] ?? 0,
+        ...(isAdmin && { responders: respondersByOptionId[o.id] ?? [] }),
       })),
       selectedOptionIds,
       uniqueResponderCount: distinctResponders.length,
@@ -93,6 +126,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Survey not found" }, { status: 404 });
     }
     await prisma.survey.delete({ where: { id: survey.id } });
+    await deleteSurveyOptionImages(survey.options.map((o) => o.imageUrl));
     return NextResponse.json({ ok: true });
   } catch (e) {
     if (e && typeof e === "object" && "code" in e && e.code === "P2025") {

@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { findSurveyByIdOrSlug } from "@/lib/survey-slug";
+import { deleteSurveyOptionImages } from "@/lib/survey-images";
 
 /**
- * DELETE /api/surveys/[id]/options/[optionId] - Remove a date option (admin only)
+ * DELETE /api/surveys/[id]/options/[optionId] - Remove an option (admin only)
  */
 export async function DELETE(
   _request: NextRequest,
@@ -30,5 +31,6 @@ export async function DELETE(
   }
 
   await prisma.surveyDateOption.delete({ where: { id: optionId } });
+  await deleteSurveyOptionImages([option.imageUrl]);
   return NextResponse.json({ ok: true });
 }
