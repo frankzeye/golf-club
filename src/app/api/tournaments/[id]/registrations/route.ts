@@ -47,13 +47,6 @@ export async function POST(
     return NextResponse.json({ error: "Tournament not found" }, { status: 404 });
   }
 
-  if (tournamentWithCount.date < new Date()) {
-    return NextResponse.json(
-      { error: "Cannot register for past tournaments" },
-      { status: 400 }
-    );
-  }
-
   if (tournamentWithCount._count.registrations >= tournamentWithCount.availableSpots) {
     return NextResponse.json({ error: "Tournament is full" }, { status: 400 });
   }

@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/Header";
+import { AdminRegisterMemberForm } from "@/components/AdminRegisterMemberForm";
 import { CourseAutocomplete } from "@/components/CourseAutocomplete";
 import { AvatarWithSash } from "@/components/AvatarWithSash";
 
@@ -162,9 +163,6 @@ export default function TournamentDetailPage() {
   const [prizeResults, setPrizeResults] = useState<string[]>([]);
   const [isSavingWinners, setIsSavingWinners] = useState(false);
   const [clubMembers, setClubMembers] = useState<ClubMember[]>([]);
-  const [addMemberUserId, setAddMemberUserId] = useState("");
-  const [addMemberMarkAsPaid, setAddMemberMarkAsPaid] = useState(false);
-  const [isAddingMember, setIsAddingMember] = useState(false);
 
   const loadComments = useCallback(() => {
     if (!id) return;
@@ -250,8 +248,6 @@ export default function TournamentDetailPage() {
 
   useEffect(() => {
     if (status !== "authenticated" || !isAdmin || !tournament) return;
-    const isUpcoming = new Date(tournament.date + "T23:59:59") >= new Date();
-    if (!isUpcoming) return;
     fetch("/api/members")
       .then((res) => (res.ok ? res.json() : []))
       .then(setClubMembers)
@@ -530,38 +526,6 @@ export default function TournamentDetailPage() {
       setError("Failed to remove registration");
     } finally {
       setRemovingRegistrationId(null);
-    }
-  };
-
-  const handleAdminAddMember = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!tournament || !addMemberUserId) return;
-    setIsAddingMember(true);
-    setError("");
-    try {
-      const res = await fetch(
-        `/api/tournaments/${tournament.id}/registrations`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: addMemberUserId,
-            markAsPaid: addMemberMarkAsPaid,
-          }),
-        }
-      );
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Failed to add member");
-        return;
-      }
-      setAddMemberUserId("");
-      setAddMemberMarkAsPaid(false);
-      loadTournament();
-    } catch {
-      setError("Failed to add member");
-    } finally {
-      setIsAddingMember(false);
     }
   };
 
@@ -1154,6 +1118,32 @@ export default function TournamentDetailPage() {
           </dl>
           )}
 
+          {isAdmin && (
+            <div className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50/60 p-4">
+              <h2 className="text-sm font-semibold text-stone-900">
+                Register a member
+              </h2>
+              <p className="mt-1 text-xs text-stone-600">
+                {isUpcoming
+                  ? "Add a club member to this tournament on their behalf."
+                  : "Add a member retroactively to this past tournament."}
+              </p>
+              <div className="mt-4">
+                <AdminRegisterMemberForm
+                  tournamentId={tournament.id}
+                  members={availableMembersToAdd}
+                  hasBuyIn={hasBuyIn}
+                  isFull={isFull}
+                  onSuccess={() => {
+                    setError("");
+                    loadTournament();
+                  }}
+                  onError={setError}
+                />
+              </div>
+            </div>
+          )}
+
           {isUpcoming && (
             <div className="mt-6 space-y-4">
               {tournament.isRegistered ? (
@@ -1253,66 +1243,11 @@ export default function TournamentDetailPage() {
             <p className="mt-4 text-sm text-red-600">{error}</p>
           )}
 
-          {(tournament.registeredUsers.length > 0 || (isAdmin && isUpcoming)) && (
+          {(tournament.registeredUsers.length > 0 || isAdmin) && (
             <div className="mt-8 border-t border-stone-200 pt-6">
               <h2 className="text-sm font-semibold text-stone-900">
                 Registered ({tournament.registeredUsers.length})
               </h2>
-              {isAdmin && isUpcoming && !isFull && (
-                <form
-                  onSubmit={handleAdminAddMember}
-                  className="mt-4 rounded-lg border border-stone-200 bg-stone-50 p-4"
-                >
-                  <p className="text-xs font-medium text-stone-600">Add member</p>
-                  <div className="mt-3 flex flex-wrap items-end gap-3">
-                    <div className="min-w-[200px] flex-1">
-                      <label className="block text-xs font-medium text-stone-600">
-                        Member
-                      </label>
-                      <select
-                        value={addMemberUserId}
-                        onChange={(e) => setAddMemberUserId(e.target.value)}
-                        className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                      >
-                        <option value="">— Select member —</option>
-                        {availableMembersToAdd.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.fullName}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    {hasBuyIn && (
-                      <label className="flex items-center gap-2 pb-2 text-sm text-stone-700">
-                        <input
-                          type="checkbox"
-                          checked={addMemberMarkAsPaid}
-                          onChange={(e) => setAddMemberMarkAsPaid(e.target.checked)}
-                          className="rounded border-stone-300 text-emerald-600 focus:ring-emerald-500"
-                        />
-                        Mark as paid
-                      </label>
-                    )}
-                    <button
-                      type="submit"
-                      disabled={isAddingMember || !addMemberUserId}
-                      className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-                    >
-                      {isAddingMember ? "Adding…" : "Add"}
-                    </button>
-                  </div>
-                  {availableMembersToAdd.length === 0 && (
-                    <p className="mt-2 text-xs text-stone-500">
-                      All club members are already registered.
-                    </p>
-                  )}
-                </form>
-              )}
-              {isAdmin && isUpcoming && isFull && (
-                <p className="mt-3 text-xs text-stone-500">
-                  Tournament is full — remove a registration to add someone else.
-                </p>
-              )}
               <div className="mt-3 space-y-2">
                 {tournament.registeredUsers.length === 0 ? (
                   <p className="text-sm text-stone-500">No one registered yet.</p>
