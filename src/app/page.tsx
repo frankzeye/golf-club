@@ -100,7 +100,7 @@ export default function Home() {
               Golf Club
             </p>
             <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-stone-600 sm:text-lg">
-              Limited size monthly tournaments in all over Riverside County.
+              Limited size monthly tournaments all over Riverside County.
               Where friends are made and personal records set.
             </p>
 
