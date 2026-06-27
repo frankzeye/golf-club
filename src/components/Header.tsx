@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { AvatarWithSash } from "@/components/AvatarWithSash";
+import { ClubLogo } from "@/components/ClubLogo";
 
 export function Header() {
   const { data: session, status } = useSession();
@@ -27,11 +28,7 @@ export function Header() {
           href="/"
           className="flex items-center hover:opacity-90"
         >
-          <img
-            src="/logo.png"
-            alt="Spencer's Crossing Golf Club"
-            className="h-10 w-auto"
-          />
+          <ClubLogo />
         </Link>
         <nav className="flex items-center gap-6">
           {status === "loading" ? (
@@ -73,9 +70,8 @@ export function Header() {
                   <AvatarWithSash
                     imageUrl={session.user?.image ?? null}
                     alt="Profile"
-                    size="md"
+                    fill
                     fallback={session.user?.name?.[0]?.toUpperCase() ?? "?"}
-                    className="h-full w-full"
                   />
                 </button>
                 {menuOpen && (

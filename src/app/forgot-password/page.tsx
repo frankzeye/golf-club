@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { ClubLogo } from "@/components/ClubLogo";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -40,11 +41,7 @@ export default function ForgotPasswordPage() {
             href="/"
             className="flex items-center hover:opacity-90"
           >
-            <img
-              src="/logo.png"
-              alt="Spencer's Crossing Golf Club"
-              className="h-10 w-auto"
-            />
+            <ClubLogo />
           </Link>
           <Link
             href="/signin"

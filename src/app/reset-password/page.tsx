@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from "react";
 import Link from "next/link";
+import { ClubLogo } from "@/components/ClubLogo";
 import { useRouter, useSearchParams } from "next/navigation";
 
 function ResetPasswordForm() {
@@ -58,11 +59,7 @@ function ResetPasswordForm() {
             href="/"
             className="flex items-center hover:opacity-90"
           >
-            <img
-              src="/logo.png"
-              alt="Spencer's Crossing Golf Club"
-              className="h-10 w-auto"
-            />
+            <ClubLogo />
           </Link>
           <Link
             href="/signin"

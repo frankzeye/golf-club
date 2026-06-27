@@ -204,7 +204,14 @@ export default function MemberDetailPage() {
   }
 
   if (status === "unauthenticated") {
-    return null;
+    return (
+      <div className="flex min-h-screen flex-col bg-stone-50">
+        <Header />
+        <div className="flex flex-1 items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
+        </div>
+      </div>
+    );
   }
 
   if (error || !member) {

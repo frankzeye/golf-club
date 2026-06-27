@@ -61,7 +61,14 @@ export default function MembersPage() {
   }
 
   if (status === "unauthenticated") {
-    return null;
+    return (
+      <div className="flex min-h-screen flex-col bg-stone-50">
+        <Header />
+        <div className="flex flex-1 items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
+        </div>
+      </div>
+    );
   }
 
   const handleExportCsv = async () => {
@@ -117,7 +124,7 @@ export default function MembersPage() {
             <Link
               key={member.id}
               href={`/members/${member.id}`}
-              className="flex items-center gap-4 rounded-xl border border-stone-200 bg-white p-4 shadow-sm transition-colors hover:bg-stone-50"
+              className="flex min-w-0 items-center gap-4 rounded-xl border border-stone-200 bg-white p-4 shadow-sm transition-colors hover:bg-stone-50"
             >
               <AvatarWithSash
                 imageUrl={member.imageUrl}

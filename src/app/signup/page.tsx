@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { ClubLogo } from "@/components/ClubLogo";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 
@@ -53,11 +54,7 @@ export default function SignUpPage() {
             href="/"
             className="flex items-center hover:opacity-90"
           >
-            <img
-              src="/logo.png"
-              alt="Spencer's Crossing Golf Club"
-              className="h-10 w-auto"
-            />
+            <ClubLogo />
           </Link>
           <Link
             href="/signin"

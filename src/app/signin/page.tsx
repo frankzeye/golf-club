@@ -4,6 +4,7 @@ import { useState, Suspense } from "react";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ClubLogo } from "@/components/ClubLogo";
 
 function SignInForm() {
   const router = useRouter();
@@ -48,11 +49,7 @@ function SignInForm() {
             href="/"
             className="flex items-center hover:opacity-90"
           >
-            <img
-              src="/logo.png"
-              alt="Spencer's Crossing Golf Club"
-              className="h-10 w-auto"
-            />
+            <ClubLogo />
           </Link>
           <Link
             href="/signup"
