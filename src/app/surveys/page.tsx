@@ -21,6 +21,8 @@ interface SurveyRow {
   title: string;
   optionCount: number;
   createdAt: string;
+  endsAt?: string | null;
+  isClosed?: boolean;
 }
 
 const MONTHS = [
@@ -55,6 +57,8 @@ export default function SurveysPage() {
     { label: "", imageUrl: null },
   ]);
   const [createAllowMultiple, setCreateAllowMultiple] = useState(false);
+  const [createDurationDays, setCreateDurationDays] = useState(7);
+  const [createDurationHours, setCreateDurationHours] = useState(0);
   const [uploadingOptionIdx, setUploadingOptionIdx] = useState<number | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
@@ -66,6 +70,8 @@ export default function SurveysPage() {
       { label: "", imageUrl: null },
     ]);
     setCreateAllowMultiple(false);
+    setCreateDurationDays(7);
+    setCreateDurationHours(0);
   };
 
   const handleOptionImageUpload = async (idx: number, file: File) => {
@@ -144,6 +150,10 @@ export default function SurveysPage() {
     setIsCreating(true);
     setError("");
     try {
+      const durationFields = {
+        durationDays: createDurationDays,
+        durationHours: createDurationHours,
+      };
       const body =
         createType === "multiple_choice"
           ? {
@@ -151,8 +161,9 @@ export default function SurveysPage() {
               title: createTitle.trim(),
               options: filledOptions,
               allowMultiple: createAllowMultiple,
+              ...durationFields,
             }
-          : { type: "availability", month: createMonth, year: createYear };
+          : { type: "availability", month: createMonth, year: createYear, ...durationFields };
       const res = await fetch("/api/surveys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -289,31 +300,60 @@ export default function SurveysPage() {
               Title will be &quot;Dates You Can Play in [Month] [Year]&quot;. You can add specific dates on the next
               screen.
             </p>
-            <div className="mt-4 flex flex-wrap items-end gap-4">
-              <div>
-                <label className="block text-xs font-medium text-stone-600">Month</label>
-                <select
-                  value={createMonth}
-                  onChange={(e) => setCreateMonth(Number(e.target.value))}
-                  className="mt-1 rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                >
-                  {MONTHS.map((m) => (
-                    <option key={m.value} value={m.value}>
-                      {m.label}
-                    </option>
-                  ))}
-                </select>
+            <div className="mt-4 space-y-4">
+              <div className="flex flex-wrap items-end gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-stone-600">Month</label>
+                  <select
+                    value={createMonth}
+                    onChange={(e) => setCreateMonth(Number(e.target.value))}
+                    className="mt-1 rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  >
+                    {MONTHS.map((m) => (
+                      <option key={m.value} value={m.value}>
+                        {m.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-stone-600">Year</label>
+                  <input
+                    type="number"
+                    min={2000}
+                    max={2100}
+                    value={createYear}
+                    onChange={(e) => setCreateYear(Number(e.target.value))}
+                    className="mt-1 w-28 rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-stone-600">Year</label>
-                <input
-                  type="number"
-                  min={2000}
-                  max={2100}
-                  value={createYear}
-                  onChange={(e) => setCreateYear(Number(e.target.value))}
-                  className="mt-1 w-28 rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                />
+              <div className="flex flex-wrap items-end gap-4 border-t border-stone-100 pt-4">
+                <div>
+                  <label className="block text-xs font-medium text-stone-600">Open for (days)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={365}
+                    value={createDurationDays}
+                    onChange={(e) => setCreateDurationDays(Number(e.target.value))}
+                    className="mt-1 w-20 rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-stone-600">+ (hours)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={23}
+                    value={createDurationHours}
+                    onChange={(e) => setCreateDurationHours(Number(e.target.value))}
+                    className="mt-1 w-20 rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+                <p className="pb-2 text-xs text-stone-500">
+                  Members can respond until this time limit expires.
+                </p>
               </div>
               <button
                 type="submit"
@@ -451,6 +491,33 @@ export default function SurveysPage() {
                 />
                 Allow members to select multiple options
               </label>
+              <div className="flex flex-wrap items-end gap-4 border-t border-stone-100 pt-4">
+                <div>
+                  <label className="block text-xs font-medium text-stone-600">Open for (days)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={365}
+                    value={createDurationDays}
+                    onChange={(e) => setCreateDurationDays(Number(e.target.value))}
+                    className="mt-1 w-20 rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-stone-600">+ (hours)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={23}
+                    value={createDurationHours}
+                    onChange={(e) => setCreateDurationHours(Number(e.target.value))}
+                    className="mt-1 w-20 rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+                <p className="pb-2 text-xs text-stone-500">
+                  Members can respond until this time limit expires.
+                </p>
+              </div>
               <button
                 type="submit"
                 disabled={isCreating || uploadingOptionIdx !== null}
@@ -489,9 +556,30 @@ export default function SurveysPage() {
                         day: "numeric",
                         year: "numeric",
                       })}
+                      {s.endsAt && (
+                        <>
+                          {" "}
+                          ·{" "}
+                          {s.isClosed ? (
+                            <span className="text-red-600">Closed</span>
+                          ) : (
+                            <>
+                              Closes{" "}
+                              {new Date(s.endsAt).toLocaleString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                hour: "numeric",
+                                minute: "2-digit",
+                              })}
+                            </>
+                          )}
+                        </>
+                      )}
                     </p>
                   </div>
-                  <span className="text-sm font-medium text-emerald-600">Open →</span>
+                  <span className="text-sm font-medium text-emerald-600">
+                    {s.isClosed ? "View →" : "Open →"}
+                  </span>
                 </Link>
               </li>
             ))

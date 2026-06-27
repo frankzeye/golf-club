@@ -5,6 +5,12 @@ import { prisma } from "@/lib/db";
 import { surveyDisplayTitle } from "@/lib/survey-title";
 import { findSurveyByIdOrSlug } from "@/lib/survey-slug";
 import { deleteSurveyOptionImages } from "@/lib/survey-images";
+import {
+  isSurveyClosed,
+  parseDatetimeLocalValue,
+  parseDurationDaysHours,
+  endsAtFromDuration,
+} from "@/lib/survey-deadline";
 
 /**
  * GET /api/surveys/[id] - Survey detail with date options and current user's selections
@@ -86,6 +92,8 @@ export async function GET(
       month: survey.month,
       year: survey.year,
       title: surveyDisplayTitle(survey),
+      endsAt: survey.endsAt?.toISOString() ?? null,
+      isClosed: isSurveyClosed(survey.endsAt),
       options: survey.options.map((o) => ({
         id: o.id,
         date: o.date ? o.date.toISOString().slice(0, 10) : null,
@@ -101,6 +109,79 @@ export async function GET(
     console.error("GET /api/surveys/[id] failed:", e);
     return NextResponse.json(
       { error: "Failed to load survey" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PATCH /api/surveys/[id] - Update survey settings (admin only)
+ * Body: { endsAt?: string } or { durationDays?: number, durationHours?: number } to extend from now
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { error } = await requireAdmin();
+  if (error) {
+    return NextResponse.json(error.json, { status: error.status });
+  }
+
+  const { id: idOrSlug } = await params;
+
+  let body: {
+    endsAt?: string;
+    durationDays?: number;
+    durationHours?: number;
+  };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const survey = await findSurveyByIdOrSlug(idOrSlug);
+  if (!survey) {
+    return NextResponse.json({ error: "Survey not found" }, { status: 404 });
+  }
+
+  let endsAt: Date | undefined;
+  if (typeof body.endsAt === "string") {
+    const parsed = parseDatetimeLocalValue(body.endsAt);
+    if ("error" in parsed) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
+    endsAt = parsed;
+  } else if (body.durationDays !== undefined || body.durationHours !== undefined) {
+    const duration = parseDurationDaysHours(
+      body.durationDays ?? 0,
+      body.durationHours ?? 0
+    );
+    if ("error" in duration) {
+      return NextResponse.json({ error: duration.error }, { status: 400 });
+    }
+    endsAt = endsAtFromDuration(duration.days, duration.hours);
+  } else {
+    return NextResponse.json(
+      { error: "Provide endsAt or durationDays and durationHours" },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const updated = await prisma.survey.update({
+      where: { id: survey.id },
+      data: { endsAt },
+    });
+    return NextResponse.json({
+      id: updated.id,
+      endsAt: updated.endsAt?.toISOString() ?? null,
+      isClosed: isSurveyClosed(updated.endsAt),
+    });
+  } catch (e) {
+    console.error("PATCH /api/surveys/[id] failed:", e);
+    return NextResponse.json(
+      { error: "Failed to update survey" },
       { status: 500 }
     );
   }

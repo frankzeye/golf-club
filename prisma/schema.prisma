@@ -48,6 +48,7 @@ model Survey {
   allowMultiple Boolean  @default(true) // multiple_choice: can members pick more than one option?
   month         Int?     // 1–12 (availability only)
   year          Int?     // (availability only)
+  endsAt        DateTime? // when voting closes; null = no deadline (legacy)
   createdAt     DateTime @default(now())
   createdById   String?
   createdBy     User?    @relation("SurveyCreator", fields: [createdById], references: [id], onDelete: SetNull)

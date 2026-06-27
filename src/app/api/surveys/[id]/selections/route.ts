@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { findSurveyByIdOrSlug } from "@/lib/survey-slug";
+import { isSurveyClosed } from "@/lib/survey-deadline";
 
 /**
  * PUT /api/surveys/[id]/selections - Replace current user's date selections (any signed-in member)
@@ -39,6 +40,13 @@ export async function PUT(
     return NextResponse.json({ error: "Survey not found" }, { status: 404 });
   }
   const surveyId = survey.id;
+
+  if (isSurveyClosed(survey.endsAt)) {
+    return NextResponse.json(
+      { error: "This survey is closed and no longer accepting responses" },
+      { status: 400 }
+    );
+  }
 
   if (survey.type === "multiple_choice" && !survey.allowMultiple && optionIds.length > 1) {
     return NextResponse.json(

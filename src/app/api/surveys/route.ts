@@ -4,6 +4,11 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { formatAvailabilitySurveyTitle, surveyDisplayTitle } from "@/lib/survey-title";
 import { ensureSurveySlug, generateNewSurveySlug } from "@/lib/survey-slug";
+import {
+  endsAtFromDuration,
+  isSurveyClosed,
+  parseDurationDaysHours,
+} from "@/lib/survey-deadline";
 
 /**
  * GET /api/surveys - List surveys (newest first)
@@ -31,6 +36,8 @@ export async function GET() {
         title: surveyDisplayTitle(s),
         optionCount: s._count.options,
         createdAt: s.createdAt.toISOString(),
+        endsAt: s.endsAt?.toISOString() ?? null,
+        isClosed: isSurveyClosed(s.endsAt),
       });
     }
 
@@ -88,6 +95,8 @@ export async function POST(request: NextRequest) {
     title?: string;
     options?: unknown;
     allowMultiple?: boolean;
+    durationDays?: number;
+    durationHours?: number;
   };
   try {
     body = await request.json();
@@ -156,6 +165,15 @@ export async function POST(request: NextRequest) {
     allowMultiple = body.allowMultiple === true;
   }
 
+  const duration = parseDurationDaysHours(
+    body.durationDays ?? 7,
+    body.durationHours ?? 0
+  );
+  if ("error" in duration) {
+    return NextResponse.json({ error: duration.error }, { status: 400 });
+  }
+  const endsAt = endsAtFromDuration(duration.days, duration.hours);
+
   try {
     const adminId = session!.user.id;
     const adminRow = await prisma.user.findUnique({
@@ -176,6 +194,7 @@ export async function POST(request: NextRequest) {
         title,
         allowMultiple,
         slug,
+        endsAt,
         createdById: adminRow?.id ?? null,
         ...(parsedOptions.length > 0 && {
           options: {
@@ -196,6 +215,7 @@ export async function POST(request: NextRequest) {
       month: survey.month,
       year: survey.year,
       title: surveyDisplayTitle(survey),
+      endsAt: survey.endsAt?.toISOString() ?? null,
     });
   } catch (e) {
     console.error("POST /api/surveys failed:", e);

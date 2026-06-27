@@ -7,6 +7,10 @@ import { useSession } from "next-auth/react";
 import { Header } from "@/components/Header";
 import { AccessDenied } from "@/components/AccessDenied";
 import { AvatarWithSash } from "@/components/AvatarWithSash";
+import {
+  formatSurveyDeadline,
+  toDatetimeLocalValue,
+} from "@/lib/survey-deadline";
 
 interface SurveyResponder {
   id: string;
@@ -31,6 +35,8 @@ interface SurveyDetail {
   month: number | null;
   year: number | null;
   title: string;
+  endsAt?: string | null;
+  isClosed?: boolean;
   options: SurveyOption[];
   selectedOptionIds: string[];
   uniqueResponderCount?: number;
@@ -93,6 +99,8 @@ export default function SurveyDetailPage() {
   const [isAddingDate, setIsAddingDate] = useState(false);
   const [removingOptionId, setRemovingOptionId] = useState<string | null>(null);
   const [isDeletingSurvey, setIsDeletingSurvey] = useState(false);
+  const [editEndsAt, setEditEndsAt] = useState("");
+  const [isSavingEndsAt, setIsSavingEndsAt] = useState(false);
   const [showSavedAck, setShowSavedAck] = useState(false);
   const savedRedirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -117,6 +125,7 @@ export default function SurveyDetailPage() {
       .then((data: SurveyDetail) => {
         setSurvey(data);
         setSelected(new Set(data.selectedOptionIds ?? []));
+        setEditEndsAt(data.endsAt ? toDatetimeLocalValue(data.endsAt) : "");
         if (data.slug && slugParam === data.id && data.slug !== data.id) {
           router.replace(`/surveys/${data.slug}`);
         }
@@ -135,6 +144,7 @@ export default function SurveyDetailPage() {
   const singleSelect = isMultipleChoice && survey?.allowMultiple === false;
 
   const toggleOption = (optionId: string) => {
+    if (survey?.isClosed) return;
     setSelected((prev) => {
       if (singleSelect) return new Set([optionId]);
       const next = new Set(prev);
@@ -254,6 +264,31 @@ export default function SurveyDetailPage() {
     }
   };
 
+  const handleSaveEndsAt = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!survey || !slugParam || !editEndsAt) return;
+    setIsSavingEndsAt(true);
+    setError("");
+    try {
+      const pathSeg = encodeURIComponent(slugParam);
+      const res = await fetch(`/api/surveys/${pathSeg}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endsAt: editEndsAt }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Failed to update end date");
+        return;
+      }
+      loadSurvey();
+    } catch {
+      setError("Failed to update end date");
+    } finally {
+      setIsSavingEndsAt(false);
+    }
+  };
+
   const handleDeleteSurvey = async () => {
     if (!survey || !slugParam || !confirm("Delete this entire survey? This cannot be undone.")) return;
     setIsDeletingSurvey(true);
@@ -321,6 +356,7 @@ export default function SurveyDetailPage() {
     0
   );
   const uniqueResponders = survey.uniqueResponderCount ?? 0;
+  const isClosed = survey.isClosed ?? false;
 
   return (
     <div className="flex min-h-screen flex-col bg-stone-50">
@@ -337,12 +373,23 @@ export default function SurveyDetailPage() {
           <div>
             <h1 className="font-serif text-2xl font-semibold text-stone-900">{survey.title}</h1>
             <p className="mt-1 text-sm text-stone-600">
-              {isMultipleChoice
-                ? singleSelect
-                  ? "Pick one option. You can change your answer anytime."
-                  : "Select every option that applies. You can change your answers anytime."
-                : "Select every date you can play. You can change your answers anytime."}
+              {isClosed
+                ? "This survey is closed. You can still view results below."
+                : isMultipleChoice
+                  ? singleSelect
+                    ? "Pick one option. You can change your answer until the survey closes."
+                    : "Select every option that applies. You can change your answers until the survey closes."
+                  : "Select every date you can play. You can change your answers until the survey closes."}
             </p>
+            {survey.endsAt && (
+              <p
+                className={`mt-2 text-sm font-medium ${
+                  isClosed ? "text-red-600" : "text-amber-700"
+                }`}
+              >
+                {isClosed ? "Closed" : "Closes"} {formatSurveyDeadline(survey.endsAt)}
+              </p>
+            )}
           </div>
           {isAdmin && (
             <button
@@ -357,6 +404,34 @@ export default function SurveyDetailPage() {
         </div>
 
         {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+
+        {isAdmin && (
+          <section className="mt-6 rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
+            <h2 className="text-sm font-semibold text-stone-900">Survey deadline</h2>
+            <p className="mt-1 text-xs text-stone-500">
+              Members cannot submit or change answers after this date and time.
+            </p>
+            <form onSubmit={handleSaveEndsAt} className="mt-4 flex flex-wrap items-end gap-3">
+              <div className="min-w-[220px] flex-1">
+                <label className="block text-xs font-medium text-stone-600">End date & time</label>
+                <input
+                  type="datetime-local"
+                  value={editEndsAt}
+                  onChange={(e) => setEditEndsAt(e.target.value)}
+                  required
+                  className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={isSavingEndsAt || !editEndsAt}
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {isSavingEndsAt ? "Saving…" : "Save end date"}
+              </button>
+            </form>
+          </section>
+        )}
 
         {isAdmin && (
           <section className="mt-8 rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
@@ -454,6 +529,11 @@ export default function SurveyDetailPage() {
           <h2 className="text-sm font-semibold text-stone-900">
             {isMultipleChoice ? "Your answer" : "Your availability"}
           </h2>
+          {isClosed && (
+            <p className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+              Responses are closed. Your previous selections are shown below.
+            </p>
+          )}
           {survey.options.length === 0 ? (
             <p className="mt-3 text-sm text-stone-500">
               {isAdmin
@@ -469,8 +549,9 @@ export default function SurveyDetailPage() {
                     <button
                       type="button"
                       onClick={() => toggleOption(o.id)}
+                      disabled={isClosed}
                       aria-pressed={isSelected}
-                      className={`w-full overflow-hidden rounded-xl border-2 bg-stone-50 text-left transition-all ${
+                      className={`w-full overflow-hidden rounded-xl border-2 bg-stone-50 text-left transition-all disabled:cursor-not-allowed disabled:opacity-60 ${
                         isSelected
                           ? "border-emerald-500 ring-2 ring-emerald-200"
                           : "border-stone-200 hover:border-emerald-300"
@@ -520,13 +601,14 @@ export default function SurveyDetailPage() {
                   key={o.id}
                   className="flex items-center justify-between gap-3 rounded-lg border border-stone-100 bg-stone-50 px-4 py-3"
                 >
-                  <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
+                  <label className={`flex min-w-0 flex-1 items-center gap-3 ${isClosed ? "cursor-default" : "cursor-pointer"}`}>
                     <input
                       type={singleSelect ? "radio" : "checkbox"}
                       name={singleSelect ? "survey-answer" : undefined}
                       checked={selected.has(o.id)}
                       onChange={() => toggleOption(o.id)}
-                      className={`h-4 w-4 shrink-0 border-stone-300 text-emerald-600 focus:ring-emerald-500 ${
+                      disabled={isClosed}
+                      className={`h-4 w-4 shrink-0 border-stone-300 text-emerald-600 focus:ring-emerald-500 disabled:opacity-60 ${
                         singleSelect ? "" : "rounded"
                       }`}
                     />
@@ -548,7 +630,7 @@ export default function SurveyDetailPage() {
               ))}
             </ul>
           )}
-          {survey.options.length > 0 && (
+          {survey.options.length > 0 && !isClosed && (
             <button
               type="button"
               onClick={handleSaveSelections}
