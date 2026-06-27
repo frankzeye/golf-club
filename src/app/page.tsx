@@ -101,6 +101,7 @@ export default function Home() {
             </p>
             <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-stone-600 sm:text-lg">
               Limited size monthly tournaments all over Riverside County.
+              <br />
               Where friends are made and personal records set.
             </p>
 
