@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/Header";
+import { AccessDenied } from "@/components/AccessDenied";
 import { AvatarWithSash } from "@/components/AvatarWithSash";
 import { CourseAutocomplete } from "@/components/CourseAutocomplete";
 
@@ -42,7 +43,6 @@ interface MemberDetail {
 
 export default function MemberDetailPage() {
   const { data: session, status } = useSession();
-  const router = useRouter();
   const params = useParams();
   const id = params?.id as string;
   const [member, setMember] = useState<MemberDetail | null>(null);
@@ -60,10 +60,6 @@ export default function MemberDetailPage() {
   });
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push(`/signin?callbackUrl=/members/${id}`);
-      return;
-    }
     if (status !== "authenticated" || !id) return;
     fetch(`/api/members/${id}`)
       .then((res) => {
@@ -83,7 +79,7 @@ export default function MemberDetailPage() {
       })
       .catch(() => setError("Member not found"))
       .finally(() => setIsLoading(false));
-  }, [status, router, id]);
+  }, [status, id]);
 
   const handleToggleAdmin = async (checked: boolean) => {
     if (!member || member.id === session?.user?.id) return;
@@ -204,14 +200,7 @@ export default function MemberDetailPage() {
   }
 
   if (status === "unauthenticated") {
-    return (
-      <div className="flex min-h-screen flex-col bg-stone-50">
-        <Header />
-        <div className="flex flex-1 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
-        </div>
-      </div>
-    );
+    return <AccessDenied pageName="Member profiles" />;
   }
 
   if (error || !member) {

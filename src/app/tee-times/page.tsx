@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
+import { AccessDenied } from "@/components/AccessDenied";
 
 interface TeeTime {
   time: string;
@@ -39,7 +39,6 @@ const PLAYERS_OPTIONS = [
 
 export default function TeeTimesPage() {
   const { status } = useSession();
-  const router = useRouter();
   const [date, setDate] = useState(() => {
     const today = new Date();
     return today.toISOString().split("T")[0];
@@ -52,12 +51,6 @@ export default function TeeTimesPage() {
   const [filterTime, setFilterTime] = useState("all");
   const [filterPrice, setFilterPrice] = useState("all");
   const [filterPlayers, setFilterPlayers] = useState("all");
-
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/signin?callbackUrl=/tee-times");
-    }
-  }, [status, router]);
 
   useEffect(() => {
     if (status !== "authenticated" || !date) return;
@@ -202,7 +195,9 @@ export default function TeeTimesPage() {
     );
   }
 
-  if (status === "unauthenticated") return null;
+  if (status === "unauthenticated") {
+    return <AccessDenied pageName="Tee times" />;
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-stone-50">

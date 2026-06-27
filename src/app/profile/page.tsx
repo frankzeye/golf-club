@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/Header";
+import { AccessDenied } from "@/components/AccessDenied";
 import { CourseAutocomplete } from "@/components/CourseAutocomplete";
 import { AvatarWithSash } from "@/components/AvatarWithSash";
 
@@ -28,7 +28,6 @@ interface Badge {
 
 export default function ProfilePage() {
   const { data: session, status, update } = useSession();
-  const router = useRouter();
   const [form, setForm] = useState<ProfileForm>({
     firstName: "",
     lastName: "",
@@ -47,10 +46,6 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/signin?callbackUrl=/profile");
-      return;
-    }
     if (status !== "authenticated") return;
     fetch("/api/profile")
       .then((res) => res.json())
@@ -79,7 +74,7 @@ export default function ProfilePage() {
       })
       .catch(() => {})
       .finally(() => setIsLoading(false));
-  }, [status, router]);
+  }, [status]);
 
   const handleChange = (field: keyof ProfileForm) => (
     e: React.ChangeEvent<HTMLInputElement>
@@ -194,7 +189,7 @@ export default function ProfilePage() {
   }
 
   if (status === "unauthenticated") {
-    return null;
+    return <AccessDenied pageName="Your profile" />;
   }
 
   return (

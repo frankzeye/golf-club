@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Header } from "@/components/Header";
+import { AccessDenied } from "@/components/AccessDenied";
 import { AvatarWithSash } from "@/components/AvatarWithSash";
 
 interface SurveyResponder {
@@ -285,19 +286,7 @@ export default function SurveyDetailPage() {
   }
 
   if (!session) {
-    return (
-      <div className="flex min-h-screen flex-col bg-stone-50">
-        <Header />
-        <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-10">
-          <p className="text-stone-600">
-            <Link href="/signin" className="font-medium text-emerald-600 hover:underline">
-              Sign in
-            </Link>{" "}
-            to view this survey.
-          </p>
-        </main>
-      </div>
-    );
+    return <AccessDenied pageName="Surveys" />;
   }
 
   if (error && !survey) {

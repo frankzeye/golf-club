@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Header } from "@/components/Header";
+import { AccessDenied } from "@/components/AccessDenied";
 
 interface CreateOption {
   label: string;
@@ -179,6 +180,10 @@ export default function SurveysPage() {
       setIsCreating(false);
     }
   };
+
+  if (status === "unauthenticated") {
+    return <AccessDenied pageName="Surveys" />;
+  }
 
   if (status === "loading" || isLoading) {
     return (

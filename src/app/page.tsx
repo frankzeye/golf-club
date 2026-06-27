@@ -22,7 +22,7 @@ const FEATURES = [
     description:
       "Browse upcoming events, register your spot, and see results from past competitions.",
     icon: TrophyIcon,
-    public: true,
+    membersOnly: false,
   },
   {
     href: "/tee-times",
@@ -30,7 +30,7 @@ const FEATURES = [
     description:
       "Search tee times across Southern California courses and book your next round.",
     icon: ClockIcon,
-    public: false,
+    membersOnly: true,
   },
   {
     href: "/surveys",
@@ -38,7 +38,7 @@ const FEATURES = [
     description:
       "Vote on availability dates and club decisions so we can plan together.",
     icon: PollIcon,
-    public: false,
+    membersOnly: true,
   },
   {
     href: "/members",
@@ -46,7 +46,7 @@ const FEATURES = [
     description:
       "Meet the club — handicaps, home courses, and profiles for every member.",
     icon: MembersIcon,
-    public: false,
+    membersOnly: true,
   },
 ] as const;
 
@@ -146,15 +146,13 @@ export default function Home() {
         <section className="mx-auto max-w-4xl px-4 py-12">
           <div className="grid gap-4 sm:grid-cols-2">
             {FEATURES.map((feature) => {
-              const needsAuth = !feature.public && !session;
-              const href = needsAuth
-                ? `/signin?callbackUrl=${encodeURIComponent(feature.href)}`
-                : feature.href;
+              const loginRequired =
+                feature.membersOnly && status === "unauthenticated";
 
               return (
                 <Link
                   key={feature.href}
-                  href={href}
+                  href={feature.href}
                   className="group rounded-2xl border border-stone-200 bg-white p-6 shadow-sm transition-colors hover:border-stone-300 hover:shadow-md"
                 >
                   <div className="flex items-start gap-4">
@@ -164,9 +162,9 @@ export default function Home() {
                     <div className="min-w-0">
                       <h3 className="font-semibold text-stone-900">
                         {feature.title}
-                        {needsAuth && (
+                        {loginRequired && (
                           <span className="ml-2 text-xs font-normal text-stone-400">
-                            Sign in required
+                            Login required
                           </span>
                         )}
                       </h3>

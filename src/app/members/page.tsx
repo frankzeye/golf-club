@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/Header";
+import { AccessDenied } from "@/components/AccessDenied";
 import { AvatarWithSash } from "@/components/AvatarWithSash";
 
 interface Member {
@@ -20,17 +20,12 @@ interface Member {
 
 export default function MembersPage() {
   const { data: session, status } = useSession();
-  const router = useRouter();
   const isAdmin = session?.user?.role === "admin";
   const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/signin?callbackUrl=/members");
-      return;
-    }
     if (status !== "authenticated") return;
     fetch("/api/members")
       .then((res) => res.json())
@@ -47,7 +42,7 @@ export default function MembersPage() {
       })
       .catch(() => setMembers([]))
       .finally(() => setIsLoading(false));
-  }, [status, router]);
+  }, [status]);
 
   if (status === "loading" || (status === "authenticated" && isLoading)) {
     return (
@@ -61,14 +56,7 @@ export default function MembersPage() {
   }
 
   if (status === "unauthenticated") {
-    return (
-      <div className="flex min-h-screen flex-col bg-stone-50">
-        <Header />
-        <div className="flex flex-1 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
-        </div>
-      </div>
-    );
+    return <AccessDenied pageName="The members directory" />;
   }
 
   const handleExportCsv = async () => {
