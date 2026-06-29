@@ -6,7 +6,7 @@
     "node": ">=18.17.0"
   },
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -H 0.0.0.0",
     "build": "node scripts/use-pg-schema.js && prisma generate && next build",
     "start": "node scripts/db-baseline.js && next start",
     "lint": "eslint",

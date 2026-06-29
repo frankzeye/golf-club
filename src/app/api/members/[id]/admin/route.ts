@@ -9,7 +9,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { session, error } = await requireAdmin();
+  const { session, error } = await requireAdmin(request);
   if (error) {
     return NextResponse.json(error.json, { status: error.status });
   }
@@ -54,10 +54,10 @@ export async function PATCH(
  * POST /api/members/[id]/admin - Promote a user to admin (admin only, deprecated - use PATCH)
  */
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { session, error } = await requireAdmin();
+  const { session, error } = await requireAdmin(request);
   if (error) {
     return NextResponse.json(error.json, { status: error.status });
   }

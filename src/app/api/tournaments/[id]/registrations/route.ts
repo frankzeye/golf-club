@@ -10,7 +10,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { error } = await requireAdmin();
+  const { error } = await requireAdmin(request);
   if (error) {
     return NextResponse.json(error.json, { status: error.status });
   }

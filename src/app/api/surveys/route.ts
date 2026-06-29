@@ -83,7 +83,7 @@ function prismaSurveyMissingHint(e: unknown): string | null {
  * Multiple choice: { type: "multiple_choice", title, options: Array<string | { label?, imageUrl? }>, allowMultiple?: boolean }
  */
 export async function POST(request: NextRequest) {
-  const { session, error } = await requireAdmin();
+  const { session, error } = await requireAdmin(request);
   if (error) {
     return NextResponse.json(error.json, { status: error.status });
   }

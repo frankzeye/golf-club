@@ -1,12 +1,15 @@
 import type { NextAuthOptions } from "next-auth";
+import type { NextRequest } from "next/server";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
 import { prisma } from "@/lib/db";
+import { getAuthSession } from "@/lib/mobile-auth";
+
+export { getAuthSession, getAuthSessionFromApiRequest, createMobileAuthToken } from "@/lib/mobile-auth";
 
 /** Returns session if user is admin, otherwise returns JSON 403 response. Use in API routes. */
-export async function requireAdmin() {
-  const { getServerSession } = await import("next-auth");
-  const session = await getServerSession(authOptions);
+export async function requireAdmin(request?: NextRequest) {
+  const session = await getAuthSession(request);
   if (!session?.user?.id) {
     return { session: null, error: { json: { error: "Unauthorized" }, status: 401 } as const };
   }

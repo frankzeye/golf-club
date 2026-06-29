@@ -1,13 +1,12 @@
-import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { getAuthSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
 /**
  * GET /api/members - List all club members (requires sign in)
  */
-export async function GET() {
-  const session = await getServerSession(authOptions);
+export async function GET(request: NextRequest) {
+  const session = await getAuthSession(request);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

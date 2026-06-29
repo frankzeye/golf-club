@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions, requireAdmin } from "@/lib/auth";
+import { getAuthSession, requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { tournamentSlug, findUniqueSlug } from "@/lib/tournament-slug";
 
@@ -8,9 +7,9 @@ import { tournamentSlug, findUniqueSlug } from "@/lib/tournament-slug";
  * GET /api/tournaments - List all tournaments (past and upcoming)
  * Public: anyone can view tournaments
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getAuthSession(request);
     const userId = session?.user?.id;
 
     const tournaments = await prisma.tournament.findMany({
@@ -105,7 +104,7 @@ export async function GET() {
  * POST /api/tournaments - Create a new tournament (admin only)
  */
 export async function POST(request: NextRequest) {
-  const { session, error } = await requireAdmin();
+  const { session, error } = await requireAdmin(request);
   if (error) {
     return NextResponse.json(error.json, { status: error.status });
   }

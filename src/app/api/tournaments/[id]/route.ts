@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions, requireAdmin } from "@/lib/auth";
+import { getAuthSession, requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { findTournamentByIdOrSlug } from "@/lib/tournament-resolve";
 import { tournamentSlug, findUniqueSlug } from "@/lib/tournament-slug";
@@ -10,10 +9,10 @@ import { tournamentSlug, findUniqueSlug } from "@/lib/tournament-slug";
  * Public: anyone can view tournament details
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
+  const session = await getAuthSession(request);
   const userId = session?.user?.id;
 
   const { id: idOrSlug } = await params;
@@ -92,7 +91,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { session, error } = await requireAdmin();
+  const { session, error } = await requireAdmin(request);
   if (error) {
     return NextResponse.json(error.json, { status: error.status });
   }
@@ -208,10 +207,10 @@ export async function PATCH(
  * DELETE /api/tournaments/[id] - Delete a tournament (admin only)
  */
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { session, error } = await requireAdmin();
+  const { session, error } = await requireAdmin(request);
   if (error) {
     return NextResponse.json(error.json, { status: error.status });
   }

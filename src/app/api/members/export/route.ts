@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
@@ -12,8 +12,8 @@ function csvCell(value: string | number | boolean | null | undefined): string {
 /**
  * GET /api/members/export - Download all members as CSV (admin only)
  */
-export async function GET() {
-  const { error } = await requireAdmin();
+export async function GET(request: NextRequest) {
+  const { error } = await requireAdmin(request);
   if (error) {
     return NextResponse.json(error.json, { status: error.status });
   }

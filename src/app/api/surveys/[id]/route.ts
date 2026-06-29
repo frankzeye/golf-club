@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions, requireAdmin } from "@/lib/auth";
+import { getAuthSession, requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { surveyDisplayTitle } from "@/lib/survey-title";
 import { findSurveyByIdOrSlug } from "@/lib/survey-slug";
@@ -16,10 +15,10 @@ import {
  * GET /api/surveys/[id] - Survey detail with date options and current user's selections
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
+  const session = await getAuthSession(request);
   const { id: idOrSlug } = await params;
 
   try {
@@ -122,7 +121,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { error } = await requireAdmin();
+  const { error } = await requireAdmin(request);
   if (error) {
     return NextResponse.json(error.json, { status: error.status });
   }
@@ -191,10 +190,10 @@ export async function PATCH(
  * DELETE /api/surveys/[id] - Remove survey and all options/selections (admin only)
  */
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { error } = await requireAdmin();
+  const { error } = await requireAdmin(request);
   if (error) {
     return NextResponse.json(error.json, { status: error.status });
   }

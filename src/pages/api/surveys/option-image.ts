@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getAuthSessionFromApiRequest } from "@/lib/auth";
 import { put } from "@vercel/blob";
 import { readFile } from "fs/promises";
 import formidable from "formidable";
@@ -51,7 +50,7 @@ export default async function handler(
     });
   }
 
-  const session = await getServerSession(req, res, authOptions);
+  const session = await getAuthSessionFromApiRequest(req, res);
   if (!session?.user?.id) {
     return res.status(401).json({ error: "Unauthorized" });
   }

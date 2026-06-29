@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getAuthSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { findTournamentByIdOrSlug } from "@/lib/tournament-resolve";
 
@@ -8,10 +7,10 @@ import { findTournamentByIdOrSlug } from "@/lib/tournament-resolve";
  * POST /api/tournaments/[id]/register/mark-paid - User marks themselves as paid (sets status to pending)
  */
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
+  const session = await getAuthSession(request);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

@@ -8,10 +8,10 @@ import { deleteSurveyOptionImages } from "@/lib/survey-images";
  * DELETE /api/surveys/[id]/options/[optionId] - Remove an option (admin only)
  */
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string; optionId: string }> }
 ) {
-  const { error } = await requireAdmin();
+  const { error } = await requireAdmin(request);
   if (error) {
     return NextResponse.json(error.json, { status: error.status });
   }
