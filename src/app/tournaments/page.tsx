@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { CourseAutocomplete } from "@/components/CourseAutocomplete";
+import { formatStartTime } from "@/lib/tournament-time";
 import { AvatarWithSash } from "@/components/AvatarWithSash";
 
 const SCORING_FORMATS = [
@@ -45,6 +46,7 @@ interface Tournament {
   slug: string;
   name: string;
   date: string;
+  startTime: string | null;
   course: string;
   scoringFormat: string;
   individualOrTeam: string;
@@ -70,6 +72,7 @@ export default function TournamentsPage() {
     name: "",
     description: "",
     date: "",
+    startTime: "",
     course: "",
     scoringFormat: "",
     individualOrTeam: "individual" as "individual" | "team",
@@ -139,6 +142,7 @@ export default function TournamentsPage() {
           name: form.name.trim(),
           description: form.description.trim() || null,
           date: form.date,
+          startTime: form.startTime || null,
           course: form.course.trim(),
           scoringFormat: form.scoringFormat,
           individualOrTeam: form.individualOrTeam,
@@ -163,6 +167,7 @@ export default function TournamentsPage() {
         name: "",
         description: "",
         date: "",
+        startTime: "",
         course: "",
         scoringFormat: "",
         individualOrTeam: "individual",
@@ -187,14 +192,16 @@ export default function TournamentsPage() {
   const formatCurrency = (n: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
 
-  const formatDate = (dateStr: string) => {
+  const formatDateWithTime = (dateStr: string, startTime?: string | null) => {
     const d = new Date(dateStr + "T12:00:00");
-    return d.toLocaleDateString("en-US", {
+    const datePart = d.toLocaleDateString("en-US", {
       weekday: "short",
       month: "short",
       day: "numeric",
       year: "numeric",
     });
+    const timePart = formatStartTime(startTime);
+    return timePart ? `${datePart} · ${timePart}` : datePart;
   };
 
   if (status === "loading" || isLoading) {
@@ -279,17 +286,30 @@ export default function TournamentsPage() {
                   placeholder="Short description (optional)"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-stone-700">
-                  Date
-                </label>
-                <input
-                  type="date"
-                  value={form.date}
-                  onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))}
-                  required
-                  className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-stone-700">
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    value={form.date}
+                    onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))}
+                    required
+                    className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-stone-700">
+                    Start Time
+                  </label>
+                  <input
+                    type="time"
+                    value={form.startTime}
+                    onChange={(e) => setForm((p) => ({ ...p, startTime: e.target.value }))}
+                    className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-stone-700">
@@ -596,7 +616,7 @@ export default function TournamentsPage() {
                           </span>
                         </div>
                         <p className="mt-1 font-medium text-stone-700">{t.course}</p>
-                        <p className="mt-3 text-sm text-stone-500">{formatDate(t.date)}</p>
+                        <p className="mt-3 text-sm text-stone-500">{formatDateWithTime(t.date, t.startTime)}</p>
                         <p className="mt-2 text-sm text-stone-500">
                           {t.scoringFormat}
                           {t.individualOrTeam === "team" && t.teamSize
@@ -660,7 +680,7 @@ export default function TournamentsPage() {
                           </span>
                         </div>
                         <p className="mt-1 font-medium text-stone-700">{t.course}</p>
-                        <p className="mt-3 text-sm text-stone-500">{formatDate(t.date)}</p>
+                        <p className="mt-3 text-sm text-stone-500">{formatDateWithTime(t.date, t.startTime)}</p>
                         <p className="mt-2 text-sm text-stone-500">
                           {t.scoringFormat}
                           {t.individualOrTeam === "team" && t.teamSize

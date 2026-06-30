@@ -86,6 +86,7 @@ model Tournament {
   name           String
   description    String?  // Short description shown under the title
   date           DateTime
+  startTime      String?  // "HH:mm" local tee time, e.g. "08:30"
   course         String
   scoringFormat  String
   individualOrTeam String @default("individual")  // "individual" | "team"

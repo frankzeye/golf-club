@@ -3,6 +3,7 @@ import { getAuthSession, requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { findTournamentByIdOrSlug } from "@/lib/tournament-resolve";
 import { tournamentSlug, findUniqueSlug } from "@/lib/tournament-slug";
+import { parseStartTime } from "@/lib/tournament-time";
 
 /**
  * GET /api/tournaments/[id] - Get a single tournament's details
@@ -66,6 +67,7 @@ export async function GET(
     name: t.name,
     description: t.description ?? null,
     date: t.date,
+    startTime: t.startTime ?? null,
     course: t.course,
     scoringFormat: t.scoringFormat,
     individualOrTeam: t.individualOrTeam,
@@ -109,6 +111,7 @@ export async function PATCH(
       name,
       description,
       date,
+      startTime,
       course,
       scoringFormat,
       individualOrTeam,
@@ -132,6 +135,16 @@ export async function PATCH(
     }
     if (date != null) {
       updates.date = new Date(date);
+    }
+    if (startTime !== undefined) {
+      const startTimeVal = parseStartTime(startTime);
+      if (startTime != null && startTime !== "" && startTimeVal === null) {
+        return NextResponse.json(
+          { error: "Start time must be in HH:mm format" },
+          { status: 400 }
+        );
+      }
+      updates.startTime = startTimeVal;
     }
     if (course != null && typeof course === "string" && course.trim().length > 0) {
       updates.course = course.trim();

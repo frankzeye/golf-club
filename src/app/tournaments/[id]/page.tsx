@@ -8,6 +8,7 @@ import { Header } from "@/components/Header";
 import { AdminRegisterMemberForm } from "@/components/AdminRegisterMemberForm";
 import { CourseAutocomplete } from "@/components/CourseAutocomplete";
 import { AvatarWithSash } from "@/components/AvatarWithSash";
+import { formatStartTime } from "@/lib/tournament-time";
 
 const SCORING_FORMATS = [
   "Stroke Play",
@@ -101,6 +102,7 @@ interface TournamentDetail {
   name: string;
   description?: string | null;
   date: string;
+  startTime: string | null;
   course: string;
   scoringFormat: string;
   individualOrTeam: string;
@@ -141,6 +143,7 @@ export default function TournamentDetailPage() {
     name: "",
     description: "",
     date: "",
+    startTime: "",
     course: "",
     scoringFormat: "",
     individualOrTeam: "individual" as "individual" | "team",
@@ -190,6 +193,7 @@ export default function TournamentDetailPage() {
           name: data.name ?? "",
           description: data.description ?? "",
           date: data.date ?? "",
+          startTime: data.startTime ?? "",
           course: data.course ?? "",
           scoringFormat: data.scoringFormat ?? "",
           individualOrTeam: data.individualOrTeam ?? "individual",
@@ -326,6 +330,7 @@ export default function TournamentDetailPage() {
           name: editForm.name.trim(),
           description: editForm.description.trim() || null,
           date: editForm.date,
+          startTime: editForm.startTime || null,
           course: editForm.course.trim(),
           scoringFormat: editForm.scoringFormat,
           individualOrTeam: editForm.individualOrTeam,
@@ -614,7 +619,12 @@ export default function TournamentDetailPage() {
                 {tournament.name}
               </h1>
               <p className="mt-2 font-semibold text-stone-900">
-                {formatDate(tournament.date)} · {tournament.course}
+                {formatDate(tournament.date)}
+                {formatStartTime(tournament.startTime) && (
+                  <> · {formatStartTime(tournament.startTime)}</>
+                )}
+                {" · "}
+                {tournament.course}
               </p>
               {tournament.description && (
                 <p className="mt-1 italic text-stone-600">{tournament.description}</p>
@@ -669,15 +679,26 @@ export default function TournamentDetailPage() {
                   placeholder="Short description (optional)"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-stone-700">Date</label>
-                <input
-                  type="date"
-                  value={editForm.date}
-                  onChange={(e) => setEditForm((p) => ({ ...p, date: e.target.value }))}
-                  required
-                  className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-stone-700">Date</label>
+                  <input
+                    type="date"
+                    value={editForm.date}
+                    onChange={(e) => setEditForm((p) => ({ ...p, date: e.target.value }))}
+                    required
+                    className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-stone-700">Start Time</label>
+                  <input
+                    type="time"
+                    value={editForm.startTime}
+                    onChange={(e) => setEditForm((p) => ({ ...p, startTime: e.target.value }))}
+                    className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-stone-700">Course</label>

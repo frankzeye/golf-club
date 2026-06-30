@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthSession, requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { tournamentSlug, findUniqueSlug } from "@/lib/tournament-slug";
+import { parseStartTime } from "@/lib/tournament-time";
 
 /**
  * GET /api/tournaments - List all tournaments (past and upcoming)
@@ -111,7 +112,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, description, date, course, scoringFormat, individualOrTeam, teamSize, availableSpots, greenFee, prizePool, clubDonation, paymentMethod, venmoUsername, prizes } = body;
+    const { name, description, date, startTime, course, scoringFormat, individualOrTeam, teamSize, availableSpots, greenFee, prizePool, clubDonation, paymentMethod, venmoUsername, prizes } = body;
 
     if (!name || typeof name !== "string" || name.trim().length === 0) {
       return NextResponse.json(
@@ -166,6 +167,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const startTimeVal = parseStartTime(startTime);
+    if (startTime != null && startTime !== "" && startTimeVal === null) {
+      return NextResponse.json(
+        { error: "Start time must be in HH:mm format" },
+        { status: 400 }
+      );
+    }
+
     const dateObj = new Date(date);
     const baseSlug = tournamentSlug(dateObj, name.trim());
     const slug = await findUniqueSlug(baseSlug);
@@ -176,6 +185,7 @@ export async function POST(request: NextRequest) {
         description: typeof description === "string" && description.trim() ? description.trim() : null,
         slug,
         date: dateObj,
+        startTime: startTimeVal,
         course: course.trim(),
         scoringFormat: scoringFormat.trim(),
         individualOrTeam: type,

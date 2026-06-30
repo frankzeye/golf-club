@@ -4,12 +4,14 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { Header } from "@/components/Header";
+import { formatStartTime } from "@/lib/tournament-time";
 
 interface Tournament {
   id: string;
   slug: string;
   name: string;
   date: string;
+  startTime: string | null;
   course: string;
   registeredCount: number;
   availableSpots: number;
@@ -228,6 +230,9 @@ export default function Home() {
                     <div className="shrink-0 text-right">
                       <p className="text-sm font-medium text-stone-700">
                         {formatDate(t.date)}
+                        {formatStartTime(t.startTime) && (
+                          <> · {formatStartTime(t.startTime)}</>
+                        )}
                       </p>
                       <p className="mt-0.5 text-xs text-stone-500">
                         {t.registeredCount} / {t.availableSpots} spots
