@@ -30,6 +30,7 @@ export async function GET(
       role: true,
       scgaOfficial: true,
       email: true,
+      createdAt: true,
       tournamentRegistrations: {
         include: {
           tournament: true,
@@ -106,6 +107,7 @@ export async function GET(
     scgaOfficial: user.scgaOfficial ?? false,
     email: isAdmin ? user.email : undefined,
     cellNumber: isAdmin ? user.cellNumber : undefined,
+    createdAt: user.createdAt,
     upcomingTournaments: upcomingRegistrations.map((r) => ({
       id: r.tournament.id,
       name: r.tournament.name,

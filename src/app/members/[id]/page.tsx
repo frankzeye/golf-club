@@ -37,6 +37,7 @@ interface MemberDetail {
   scgaOfficial?: boolean;
   email?: string;
   cellNumber?: string | null;
+  createdAt: string;
   upcomingTournaments: UpcomingTournament[];
   badges?: Badge[];
 }
@@ -264,6 +265,16 @@ export default function MemberDetailPage() {
               </div>
               {member.email && (
                 <p className="mt-1 text-sm text-stone-500">{member.email}</p>
+              )}
+              {member.createdAt && (
+                <p className="mt-1 text-sm text-stone-500">
+                  Member since{" "}
+                  {new Date(member.createdAt).toLocaleDateString("en-US", {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </p>
               )}
               {isAdmin ? (
                 <form onSubmit={handleSaveProfile} className="mt-6 space-y-4">
