@@ -8,8 +8,12 @@ import { prisma } from "@/lib/db";
 /** Same default as NextAuth.js session JWT (30 days). */
 export const MOBILE_TOKEN_MAX_AGE = 30 * 24 * 60 * 60;
 
-function authSecret(): string {
-  const secret = process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET;
+function authSecret(): string | null {
+  return process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET ?? null;
+}
+
+function requireAuthSecret(): string {
+  const secret = authSecret();
   if (!secret) {
     throw new Error("NEXTAUTH_SECRET is not configured");
   }
@@ -50,7 +54,9 @@ async function sessionFromJwt(token: JWT): Promise<Session | null> {
 async function sessionFromBearer(
   req: NextRequest | NextApiRequest
 ): Promise<Session | null> {
-  const token = await getToken({ req, secret: authSecret() });
+  const secret = authSecret();
+  if (!secret) return null;
+  const token = await getToken({ req, secret });
   if (!token || (!token.id && !token.sub)) return null;
   return sessionFromJwt(token);
 }
@@ -100,7 +106,7 @@ export async function createMobileAuthToken(user: {
       role: user.role,
       name: user.name,
     },
-    secret: authSecret(),
+    secret: requireAuthSecret(),
     maxAge: MOBILE_TOKEN_MAX_AGE,
   });
 }

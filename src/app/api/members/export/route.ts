@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 function csvCell(value: string | number | boolean | null | undefined): string {
   if (value === null || value === undefined) return "";
   const s = typeof value === "boolean" ? (value ? "Yes" : "No") : String(value);
