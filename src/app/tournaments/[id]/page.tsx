@@ -9,6 +9,7 @@ import { AdminRegisterMemberForm } from "@/components/AdminRegisterMemberForm";
 import { CourseAutocomplete } from "@/components/CourseAutocomplete";
 import { AvatarWithSash } from "@/components/AvatarWithSash";
 import { formatStartTime } from "@/lib/tournament-time";
+import { memberProfileHref } from "@/lib/member-slug";
 
 const SCORING_FORMATS = [
   "Stroke Play",
@@ -27,6 +28,7 @@ const SCORING_FORMATS = [
 
 interface CommentUser {
   id: string;
+  slug: string;
   firstName: string;
   lastName: string;
   fullName: string;
@@ -49,6 +51,7 @@ interface CommentWithReplies {
 
 interface RegisteredUser {
   id: string;
+  slug: string;
   registrationId: string;
   firstName: string;
   lastName: string;
@@ -145,6 +148,7 @@ export default function TournamentDetailPage() {
     date: "",
     startTime: "",
     course: "",
+    courseId: null as string | null,
     scoringFormat: "",
     individualOrTeam: "individual" as "individual" | "team",
     teamSize: "2" as "2" | "4",
@@ -195,6 +199,7 @@ export default function TournamentDetailPage() {
           date: data.date ?? "",
           startTime: data.startTime ?? "",
           course: data.course ?? "",
+          courseId: data.courseId ?? null,
           scoringFormat: data.scoringFormat ?? "",
           individualOrTeam: data.individualOrTeam ?? "individual",
           teamSize: data.teamSize === 4 ? "4" : "2",
@@ -332,6 +337,7 @@ export default function TournamentDetailPage() {
           date: editForm.date,
           startTime: editForm.startTime || null,
           course: editForm.course.trim(),
+          courseId: editForm.courseId,
           scoringFormat: editForm.scoringFormat,
           individualOrTeam: editForm.individualOrTeam,
           teamSize: editForm.individualOrTeam === "team" ? parseInt(editForm.teamSize, 10) : null,
@@ -704,8 +710,11 @@ export default function TournamentDetailPage() {
                 <label className="block text-sm font-medium text-stone-700">Course</label>
                 <CourseAutocomplete
                   value={editForm.course}
-                  onChange={(v) => setEditForm((p) => ({ ...p, course: v }))}
-                  placeholder="Search California courses"
+                  courseId={editForm.courseId}
+                  onChange={(name, courseId) =>
+                    setEditForm((p) => ({ ...p, course: name, courseId: courseId ?? null }))
+                  }
+                  placeholder="Search US golf courses"
                   id="edit-course"
                   className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
@@ -1016,7 +1025,7 @@ export default function TournamentDetailPage() {
                                     <span key={w.id}>
                                       {wi > 0 ? <span className="text-stone-400"> / </span> : null}
                                       <Link
-                                        href={`/members/${w.id}`}
+                                        href={memberProfileHref(w)}
                                         className="hover:text-emerald-600 hover:underline"
                                       >
                                         {w.fullName}
@@ -1279,7 +1288,7 @@ export default function TournamentDetailPage() {
                     className="flex items-center justify-between gap-3 rounded-lg border border-stone-200 px-3 py-2"
                   >
                     <Link
-                      href={`/members/${u.id}`}
+                      href={memberProfileHref(u)}
                       className="flex min-w-0 flex-1 items-center gap-2 transition-colors hover:text-emerald-600"
                     >
                       <AvatarWithSash
@@ -1392,7 +1401,7 @@ export default function TournamentDetailPage() {
                   <div className="min-w-0 flex-1">
                     <div className="rounded-lg bg-stone-50 px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <Link href={`/members/${comment.user.id}`} className="font-medium text-stone-900 hover:text-emerald-600">
+                        <Link href={memberProfileHref(comment.user)} className="font-medium text-stone-900 hover:text-emerald-600">
                           {comment.user.fullName}
                         </Link>
                         <span className="text-xs text-stone-400">{formatCommentDate(comment.createdAt)}</span>
@@ -1453,7 +1462,7 @@ export default function TournamentDetailPage() {
                             />
                             <div className="min-w-0 flex-1 rounded-lg bg-stone-50 px-3 py-2">
                               <div className="flex items-center gap-2">
-                                <Link href={`/members/${reply.user.id}`} className="font-medium text-stone-900 hover:text-emerald-600 text-sm">
+                                <Link href={memberProfileHref(reply.user)} className="font-medium text-stone-900 hover:text-emerald-600 text-sm">
                                   {reply.user.fullName}
                                 </Link>
                                 <span className="text-xs text-stone-400">{formatCommentDate(reply.createdAt)}</span>

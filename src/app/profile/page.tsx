@@ -15,6 +15,7 @@ interface ProfileForm {
   ghinNumber: string;
   handicapIndex: string;
   homeCourse: string;
+  homeCourseId: string | null;
   imageUrl: string | null;
 }
 
@@ -35,6 +36,7 @@ export default function ProfilePage() {
     ghinNumber: "",
     handicapIndex: "",
     homeCourse: "",
+    homeCourseId: null,
     imageUrl: null,
   });
   const [saved, setSaved] = useState<ProfileForm | null>(null);
@@ -58,6 +60,7 @@ export default function ProfilePage() {
           ghinNumber: data.ghinNumber ?? "",
           handicapIndex: hi != null && hi !== "" ? String(hi) : "",
           homeCourse: data.homeCourse ?? "",
+          homeCourseId: data.homeCourseId ?? null,
           imageUrl: data.imageUrl ?? null,
         });
         setSaved({
@@ -67,6 +70,7 @@ export default function ProfilePage() {
           ghinNumber: data.ghinNumber ?? "",
           handicapIndex: hi != null && hi !== "" ? String(hi) : "",
           homeCourse: data.homeCourse ?? "",
+          homeCourseId: data.homeCourseId ?? null,
           imageUrl: data.imageUrl ?? null,
         });
         setBadges(data.badges ?? []);
@@ -98,6 +102,7 @@ export default function ProfilePage() {
           ghinNumber: form.ghinNumber.trim() || null,
           handicapIndex: hiNum != null && !Number.isNaN(hiNum) ? hiNum : null,
           homeCourse: form.homeCourse.trim() || null,
+          homeCourseId: form.homeCourseId,
         }),
       });
       if (!res.ok) throw new Error("Save failed");
@@ -111,6 +116,7 @@ export default function ProfilePage() {
         ghinNumber: data.ghinNumber ?? "",
         handicapIndex: hiVal != null && hiVal !== "" ? String(hiVal) : "",
         homeCourse: data.homeCourse ?? "",
+        homeCourseId: data.homeCourseId ?? null,
       } : null);
     } catch {
       // TODO: Show toast or inline error
@@ -125,7 +131,8 @@ export default function ProfilePage() {
     form.cellNumber !== (saved?.cellNumber ?? "") ||
     form.ghinNumber !== (saved?.ghinNumber ?? "") ||
     form.handicapIndex !== (saved?.handicapIndex ?? "") ||
-    form.homeCourse !== (saved?.homeCourse ?? "");
+    form.homeCourse !== (saved?.homeCourse ?? "") ||
+    form.homeCourseId !== (saved?.homeCourseId ?? null);
 
   const handleToggleScgaOfficial = async (checked: boolean) => {
     if (!session?.user?.id) return;
@@ -367,13 +374,16 @@ export default function ProfilePage() {
               Home Course
             </label>
             <p className="mt-0.5 text-xs text-stone-500">
-              Start typing to search California golf courses
+              Start typing to search US golf courses
             </p>
             <div className="mt-1">
               <CourseAutocomplete
                 id="homeCourse"
                 value={form.homeCourse}
-                onChange={(v) => setForm((prev) => ({ ...prev, homeCourse: v }))}
+                courseId={form.homeCourseId}
+                onChange={(name, courseId) =>
+                  setForm((prev) => ({ ...prev, homeCourse: name, homeCourseId: courseId ?? null }))
+                }
                 placeholder="e.g. Pebble Beach Golf Links"
                 className="w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 placeholder-stone-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />

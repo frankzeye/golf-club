@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { findTournamentByIdOrSlug } from "@/lib/tournament-resolve";
+import { memberSlug } from "@/lib/member-slug";
 
 /**
  * GET /api/tournaments/[id]/comments - List comments for a tournament (threaded)
@@ -28,6 +29,7 @@ export async function GET(
       user: {
         select: {
           id: true,
+          slug: true,
           firstName: true,
           lastName: true,
           imageUrl: true,
@@ -39,6 +41,7 @@ export async function GET(
           user: {
             select: {
               id: true,
+              slug: true,
               firstName: true,
               lastName: true,
               imageUrl: true,
@@ -59,6 +62,7 @@ export async function GET(
     createdAt: c.createdAt,
     user: {
       id: c.user.id,
+      slug: c.user.slug ?? memberSlug(c.user.firstName ?? "", c.user.lastName ?? ""),
       firstName: c.user.firstName ?? "",
       lastName: c.user.lastName ?? "",
       fullName: [c.user.firstName, c.user.lastName].filter(Boolean).join(" ") || "—",
@@ -71,6 +75,7 @@ export async function GET(
       createdAt: r.createdAt,
       user: {
         id: r.user.id,
+        slug: r.user.slug ?? memberSlug(r.user.firstName ?? "", r.user.lastName ?? ""),
         firstName: r.user.firstName ?? "",
         lastName: r.user.lastName ?? "",
         fullName: [r.user.firstName, r.user.lastName].filter(Boolean).join(" ") || "—",
@@ -147,6 +152,7 @@ export async function POST(
         user: {
           select: {
             id: true,
+            slug: true,
             firstName: true,
             lastName: true,
             imageUrl: true,
@@ -162,6 +168,7 @@ export async function POST(
       parentId: comment.parentId,
       user: {
         id: comment.user.id,
+        slug: comment.user.slug ?? memberSlug(comment.user.firstName ?? "", comment.user.lastName ?? ""),
         firstName: comment.user.firstName ?? "",
         lastName: comment.user.lastName ?? "",
         fullName: [comment.user.firstName, comment.user.lastName].filter(Boolean).join(" ") || "—",

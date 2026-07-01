@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { syncMemberSlug } from "@/lib/member-slug";
+import { resolveCourseSelection } from "@/lib/golf-course";
 
 /**
  * GET /api/profile - Fetch the authenticated user's profile
@@ -22,6 +24,7 @@ export async function GET(request: NextRequest) {
       ghinNumber: true,
       handicapIndex: true,
       homeCourse: true,
+      homeCourseId: true,
       imageUrl: true,
       scgaOfficial: true,
       tournamentRegistrations: {
@@ -92,6 +95,7 @@ export async function GET(request: NextRequest) {
     ghinNumber: user.ghinNumber,
     handicapIndex: user.handicapIndex,
     homeCourse: user.homeCourse,
+    homeCourseId: user.homeCourseId,
     imageUrl: user.imageUrl,
     scgaOfficial: user.scgaOfficial,
     badges,
@@ -109,13 +113,18 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { firstName, lastName, cellNumber, ghinNumber, handicapIndex, homeCourse } = body;
+    const { firstName, lastName, cellNumber, ghinNumber, handicapIndex, homeCourse, homeCourseId } = body;
 
     let hi: number | null = null;
     if (handicapIndex != null && handicapIndex !== "") {
       const n = Number(handicapIndex);
       if (!Number.isNaN(n) && n >= 0 && n <= 54) hi = n;
     }
+
+    const courseSelection =
+      homeCourse !== undefined || homeCourseId !== undefined
+        ? await resolveCourseSelection(homeCourseId, homeCourse)
+        : undefined;
 
     const user = await prisma.user.update({
       where: { id: session.user.id },
@@ -125,7 +134,12 @@ export async function PATCH(request: NextRequest) {
         cellNumber: cellNumber ?? null,
         ghinNumber: ghinNumber ?? null,
         handicapIndex: hi,
-        homeCourse: homeCourse ?? null,
+        ...(courseSelection
+          ? {
+              homeCourse: courseSelection.course || null,
+              homeCourseId: courseSelection.courseId,
+            }
+          : {}),
       },
       select: {
         firstName: true,
@@ -134,8 +148,11 @@ export async function PATCH(request: NextRequest) {
         ghinNumber: true,
         handicapIndex: true,
         homeCourse: true,
+        homeCourseId: true,
       },
     });
+
+    await syncMemberSlug(session.user.id, user.firstName ?? "", user.lastName ?? "");
 
     return NextResponse.json({
       firstName: user.firstName ?? "",
@@ -144,6 +161,7 @@ export async function PATCH(request: NextRequest) {
       ghinNumber: user.ghinNumber,
       handicapIndex: user.handicapIndex,
       homeCourse: user.homeCourse,
+      homeCourseId: user.homeCourseId,
     });
   } catch (error) {
     console.error("Profile update failed:", error);

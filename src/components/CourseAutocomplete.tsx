@@ -1,10 +1,20 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { formatCourseLabel } from "@/lib/golf-course";
+
+export interface CourseSuggestion {
+  id: string;
+  name: string;
+  city: string | null;
+  state: string | null;
+  label: string;
+}
 
 interface CourseAutocompleteProps {
   value: string;
-  onChange: (value: string) => void;
+  courseId?: string | null;
+  onChange: (name: string, courseId?: string | null) => void;
   placeholder?: string;
   id?: string;
   className?: string;
@@ -13,6 +23,7 @@ interface CourseAutocompleteProps {
 
 export function CourseAutocomplete({
   value,
+  courseId = null,
   onChange,
   placeholder = "e.g. Pebble Beach Golf Links",
   id = "homeCourse",
@@ -20,7 +31,8 @@ export function CourseAutocomplete({
   disabled = false,
 }: CourseAutocompleteProps) {
   const [inputValue, setInputValue] = useState(value);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(courseId);
+  const [suggestions, setSuggestions] = useState<CourseSuggestion[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -31,6 +43,10 @@ export function CourseAutocomplete({
   useEffect(() => {
     setInputValue(value);
   }, [value]);
+
+  useEffect(() => {
+    setSelectedCourseId(courseId ?? null);
+  }, [courseId]);
 
   const fetchSuggestions = useCallback(async (q: string) => {
     if (q.length < 2) {
@@ -74,9 +90,12 @@ export function CourseAutocomplete({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleSelect = (suggestion: string) => {
-    setInputValue(suggestion);
-    onChange(suggestion);
+  const handleSelect = (suggestion: CourseSuggestion) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    hasUserInteractedRef.current = false;
+    setInputValue(suggestion.name);
+    setSelectedCourseId(suggestion.id);
+    onChange(suggestion.name, suggestion.id);
     setSuggestions([]);
     setIsOpen(false);
     setHighlightedIndex(-1);
@@ -86,7 +105,8 @@ export function CourseAutocomplete({
     hasUserInteractedRef.current = true;
     const v = e.target.value;
     setInputValue(v);
-    onChange(v);
+    setSelectedCourseId(null);
+    onChange(v, null);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -130,6 +150,9 @@ export function CourseAutocomplete({
         }
         className={className}
       />
+      {selectedCourseId && (
+        <input type="hidden" name={`${id}Id`} value={selectedCourseId} />
+      )}
       {isOpen && suggestions.length > 0 && (
         <ul
           id="course-suggestions"
@@ -138,10 +161,11 @@ export function CourseAutocomplete({
         >
           {suggestions.map((s, i) => (
             <li
-              key={s}
+              key={s.id}
               id={`course-option-${i}`}
               role="option"
               aria-selected={i === highlightedIndex}
+              onMouseDown={(e) => e.preventDefault()}
               onMouseEnter={() => setHighlightedIndex(i)}
               onClick={() => handleSelect(s)}
               className={`cursor-pointer px-4 py-2.5 text-sm ${
@@ -150,7 +174,12 @@ export function CourseAutocomplete({
                   : "text-stone-900 hover:bg-stone-50"
               }`}
             >
-              {s}
+              <span className="font-medium">{s.name}</span>
+              {(s.city || s.state) && (
+                <span className="mt-0.5 block text-xs text-stone-500">
+                  {formatCourseLabel(s.name, s.city, s.state).replace(`${s.name} — `, "")}
+                </span>
+              )}
             </li>
           ))}
         </ul>

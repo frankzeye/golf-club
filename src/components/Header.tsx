@@ -8,6 +8,7 @@ import { ClubLogo } from "@/components/ClubLogo";
 
 const NAV_LINKS = [
   { href: "/tournaments", label: "Tournaments" },
+  { href: "/social-rounds", label: "Social Rounds" },
   { href: "/tee-times", label: "Tee Times" },
   { href: "/surveys", label: "Surveys" },
   { href: "/members", label: "Members" },
@@ -56,6 +57,11 @@ export function Header() {
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
+  const isAdmin = session?.user?.role === "admin";
+  const navLinks = NAV_LINKS.filter(
+    (item) => item.href !== "/social-rounds" || isAdmin
+  );
+
   return (
     <header className="relative border-b border-stone-200 bg-white">
       <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4">
@@ -69,7 +75,7 @@ export function Header() {
           <>
             {/* Desktop navigation */}
             <nav className="hidden items-center gap-6 md:flex">
-              {NAV_LINKS.map((item) => (
+              {navLinks.map((item) => (
                 <Link key={item.href} href={item.href} className={linkClass}>
                   {item.label}
                 </Link>
@@ -144,7 +150,7 @@ export function Header() {
               {mobileMenuOpen && (
                 <div className="absolute left-0 right-0 top-full z-20 border-b border-stone-200 bg-white shadow-lg">
                   <nav className="mx-auto flex max-w-4xl flex-col gap-1 px-4 py-3">
-                    {NAV_LINKS.map((item) => (
+                    {navLinks.map((item) => (
                       <Link
                         key={item.href}
                         href={item.href}

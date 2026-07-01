@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthSession, requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { tournamentSlug, findUniqueSlug } from "@/lib/tournament-slug";
+import { memberSlug } from "@/lib/member-slug";
 import { parseStartTime } from "@/lib/tournament-time";
+import { resolveCourseSelection } from "@/lib/golf-course";
 
 /**
  * GET /api/tournaments - List all tournaments (past and upcoming)
@@ -19,7 +21,7 @@ export async function GET(request: NextRequest) {
         registrations: {
           include: {
             user: {
-              select: { id: true, firstName: true, lastName: true, imageUrl: true, scgaOfficial: true },
+              select: { id: true, slug: true, firstName: true, lastName: true, imageUrl: true, scgaOfficial: true },
             },
           },
         },
@@ -37,6 +39,7 @@ export async function GET(request: NextRequest) {
       const slug = t.slug ?? tournamentSlug(t.date, t.name);
       const registeredUsers = registrations.map((r) => ({
         id: r.user.id,
+        slug: r.user.slug ?? memberSlug(r.user.firstName ?? "", r.user.lastName ?? ""),
         firstName: r.user.firstName ?? "",
         lastName: r.user.lastName ?? "",
         fullName: [r.user.firstName, r.user.lastName].filter(Boolean).join(" ") || "—",
@@ -112,7 +115,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, description, date, startTime, course, scoringFormat, individualOrTeam, teamSize, availableSpots, greenFee, prizePool, clubDonation, paymentMethod, venmoUsername, prizes } = body;
+    const { name, description, date, startTime, course, courseId, scoringFormat, individualOrTeam, teamSize, availableSpots, greenFee, prizePool, clubDonation, paymentMethod, venmoUsername, prizes } = body;
 
     if (!name || typeof name !== "string" || name.trim().length === 0) {
       return NextResponse.json(
@@ -124,6 +127,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Date is required" }, { status: 400 });
     }
     if (!course || typeof course !== "string" || course.trim().length === 0) {
+      return NextResponse.json({ error: "Course is required" }, { status: 400 });
+    }
+
+    const courseSelection = await resolveCourseSelection(courseId, course);
+    if (!courseSelection) {
       return NextResponse.json({ error: "Course is required" }, { status: 400 });
     }
     if (
@@ -186,7 +194,8 @@ export async function POST(request: NextRequest) {
         slug,
         date: dateObj,
         startTime: startTimeVal,
-        course: course.trim(),
+        course: courseSelection.course,
+        courseId: courseSelection.courseId,
         scoringFormat: scoringFormat.trim(),
         individualOrTeam: type,
         teamSize: teamSizeVal,

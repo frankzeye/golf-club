@@ -7,8 +7,29 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model GolfCourse {
+  id              String   @id
+  name            String
+  city            String?
+  state           String?
+  latitude        Float?
+  longitude       Float?
+  par             Int?
+  detailsJson     Json?
+  detailsCachedAt DateTime?
+  updatedAt       DateTime @updatedAt
+
+  users       User[]
+  tournaments Tournament[]
+  outings     Outing[]
+
+  @@index([name])
+  @@index([state])
+}
+
 model User {
   id            String   @id @default(cuid())
+  slug          String?  @unique
   email         String   @unique
   password      String
   role          String   @default("member")  // "member" | "admin"
@@ -18,6 +39,8 @@ model User {
   ghinNumber    String?
   handicapIndex Float?
   homeCourse    String?
+  homeCourseId  String?
+  homeCourseRef GolfCourse? @relation(fields: [homeCourseId], references: [id], onDelete: SetNull)
   imageUrl      String?
   scgaOfficial  Boolean  @default(false)
   createdAt     DateTime @default(now())
@@ -26,6 +49,22 @@ model User {
   surveySelections SurveyDateSelection[]
   surveysCreated   Survey[] @relation("SurveyCreator")
   passwordResetTokens PasswordResetToken[]
+  outingsCreated   Outing[] @relation("OutingCreator")
+  outingParticipants OutingParticipant[]
+  favorites        MemberFavorite[] @relation("UserFavorites")
+  favoritedBy      MemberFavorite[] @relation("FavoritedByUsers")
+}
+
+model MemberFavorite {
+  id         String   @id @default(cuid())
+  userId     String
+  favoriteId String
+  createdAt  DateTime @default(now())
+  user       User     @relation("UserFavorites", fields: [userId], references: [id], onDelete: Cascade)
+  favorite   User     @relation("FavoritedByUsers", fields: [favoriteId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, favoriteId])
+  @@index([userId])
 }
 
 model PasswordResetToken {
@@ -88,6 +127,8 @@ model Tournament {
   date           DateTime
   startTime      String?  // "HH:mm" local tee time, e.g. "08:30"
   course         String
+  courseId       String?
+  courseRef      GolfCourse? @relation(fields: [courseId], references: [id], onDelete: SetNull)
   scoringFormat  String
   individualOrTeam String @default("individual")  // "individual" | "team"
   teamSize       Int?    // 2 or 4 when team
@@ -112,6 +153,37 @@ model TournamentRegistration {
   tournament    Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@unique([tournamentId, userId])
+}
+
+model Outing {
+  id            String   @id @default(cuid())
+  slug          String?  @unique
+  playerCount   Int
+  course        String
+  courseId      String?
+  courseRef     GolfCourse? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  hasBookedTime Boolean  @default(false)
+  date          DateTime?
+  startTime     String?  // "HH:mm" when hasBookedTime
+  timeOfDay     String?  // "morning" | "midday" | "afternoon"
+  hasWager      Boolean  @default(false)
+  wagerDetails  String?
+  status        String   @default("open") // open | full | cancelled
+  createdById   String
+  createdBy     User     @relation("OutingCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  participants  OutingParticipant[]
+}
+
+model OutingParticipant {
+  id       String @id @default(cuid())
+  outingId String
+  userId   String
+  role     String @default("player") // organizer | player
+  status   String @default("invited") // invited | confirmed | declined
+  outing   Outing @relation(fields: [outingId], references: [id], onDelete: Cascade)
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([outingId, userId])
 }
 
 model Comment {

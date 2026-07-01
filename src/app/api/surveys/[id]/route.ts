@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthSession, requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { surveyDisplayTitle } from "@/lib/survey-title";
+import { memberSlug } from "@/lib/member-slug";
 import { findSurveyByIdOrSlug } from "@/lib/survey-slug";
 import { deleteSurveyOptionImages } from "@/lib/survey-images";
 import {
@@ -60,7 +61,7 @@ export async function GET(
     const isAdmin = session?.user?.role === "admin";
     const respondersByOptionId: Record<
       string,
-      { id: string; fullName: string; imageUrl: string | null }[]
+      { id: string; slug: string; fullName: string; imageUrl: string | null }[]
     > = {};
     if (isAdmin) {
       const rows = await prisma.surveyDateSelection.findMany({
@@ -68,7 +69,7 @@ export async function GET(
         select: {
           optionId: true,
           user: {
-            select: { id: true, firstName: true, lastName: true, imageUrl: true },
+            select: { id: true, slug: true, firstName: true, lastName: true, imageUrl: true },
           },
         },
         orderBy: [{ user: { lastName: "asc" } }, { user: { firstName: "asc" } }],
@@ -76,6 +77,7 @@ export async function GET(
       for (const r of rows) {
         (respondersByOptionId[r.optionId] ??= []).push({
           id: r.user.id,
+          slug: r.user.slug ?? memberSlug(r.user.firstName ?? "", r.user.lastName ?? ""),
           fullName:
             [r.user.firstName, r.user.lastName].filter(Boolean).join(" ") || "—",
           imageUrl: r.user.imageUrl,

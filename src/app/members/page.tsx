@@ -6,9 +6,12 @@ import Link from "next/link";
 import { Header } from "@/components/Header";
 import { AccessDenied } from "@/components/AccessDenied";
 import { AvatarWithSash } from "@/components/AvatarWithSash";
+import { FavoriteStar } from "@/components/FavoriteStar";
+import { memberProfileHref } from "@/lib/member-slug";
 
 interface Member {
   id: string;
+  slug: string;
   firstName: string;
   lastName: string;
   fullName: string;
@@ -16,6 +19,7 @@ interface Member {
   homeCourse: string;
   imageUrl: string | null;
   scgaOfficial?: boolean;
+  isFavorite?: boolean;
 }
 
 export default function MembersPage() {
@@ -24,6 +28,7 @@ export default function MembersPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -43,6 +48,31 @@ export default function MembersPage() {
       .catch(() => setMembers([]))
       .finally(() => setIsLoading(false));
   }, [status]);
+
+  const handleToggleFavorite = async (member: Member) => {
+    if (member.id === session?.user?.id) return;
+    setTogglingId(member.id);
+    const prev = member.isFavorite ?? false;
+    setMembers((list) =>
+      list.map((m) => (m.id === member.id ? { ...m, isFavorite: !prev } : m))
+    );
+    try {
+      const res = await fetch(`/api/members/${member.id}/favorite`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed");
+      setMembers((list) =>
+        list.map((m) =>
+          m.id === member.id ? { ...m, isFavorite: data.favorite === true } : m
+        )
+      );
+    } catch {
+      setMembers((list) =>
+        list.map((m) => (m.id === member.id ? { ...m, isFavorite: prev } : m))
+      );
+    } finally {
+      setTogglingId(null);
+    }
+  };
 
   if (status === "loading" || (status === "authenticated" && isLoading)) {
     return (
@@ -108,41 +138,58 @@ export default function MembersPage() {
         </div>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {members.map((member) => (
-            <Link
-              key={member.id}
-              href={`/members/${member.id}`}
-              className="flex min-w-0 items-center gap-4 rounded-xl border border-stone-200 bg-white p-4 shadow-sm transition-colors hover:bg-stone-50"
-            >
-              <AvatarWithSash
-                imageUrl={member.imageUrl}
-                alt={member.fullName}
-                size="xl"
-                fallback={
-                  member.firstName
-                    ? member.firstName[0].toUpperCase()
-                    : member.lastName
-                      ? member.lastName[0].toUpperCase()
-                      : "?"
-                }
-                className="ring-2 ring-stone-200"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="flex flex-wrap items-center gap-x-1.5 font-medium text-stone-900">
-                  <span className="truncate">{member.fullName || "—"}</span>
-                  {member.scgaOfficial && (
-                    <span className="shrink-0 text-emerald-600">SCGA Official</span>
-                  )}
-                </p>
-                <p className="text-sm text-stone-500">
-                  Handicap:{" "}
-                  {member.handicapIndex != null
-                    ? member.handicapIndex
-                    : "—"}
-                </p>
+          {members.map((member) => {
+            const isSelf = member.id === session?.user?.id;
+            return (
+              <div
+                key={member.id}
+                className="relative rounded-xl border border-stone-200 bg-white shadow-sm transition-colors hover:bg-stone-50"
+              >
+                {!isSelf && (
+                  <div className="absolute right-2 top-2 z-10">
+                    <FavoriteStar
+                      isFavorite={member.isFavorite ?? false}
+                      disabled={togglingId === member.id}
+                      onToggle={() => handleToggleFavorite(member)}
+                      label={member.fullName}
+                    />
+                  </div>
+                )}
+                <Link
+                  href={memberProfileHref(member)}
+                  className="flex min-w-0 items-center gap-4 p-4 pr-10"
+                >
+                  <AvatarWithSash
+                    imageUrl={member.imageUrl}
+                    alt={member.fullName}
+                    size="xl"
+                    fallback={
+                      member.firstName
+                        ? member.firstName[0].toUpperCase()
+                        : member.lastName
+                          ? member.lastName[0].toUpperCase()
+                          : "?"
+                    }
+                    className="ring-2 ring-stone-200"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="flex flex-wrap items-center gap-x-1.5 font-medium text-stone-900">
+                      <span className="truncate">{member.fullName || "—"}</span>
+                      {member.scgaOfficial && (
+                        <span className="shrink-0 text-emerald-600">SCGA Official</span>
+                      )}
+                    </p>
+                    <p className="text-sm text-stone-500">
+                      Handicap:{" "}
+                      {member.handicapIndex != null
+                        ? member.handicapIndex
+                        : "—"}
+                    </p>
+                  </div>
+                </Link>
               </div>
-            </Link>
-          ))}
+            );
+          })}
         </div>
 
         {members.length === 0 && (

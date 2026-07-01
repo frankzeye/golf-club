@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react";
 import { Header } from "@/components/Header";
 import { AccessDenied } from "@/components/AccessDenied";
 import { AvatarWithSash } from "@/components/AvatarWithSash";
+import { memberProfileHref } from "@/lib/member-slug";
 import {
   formatSurveyDeadline,
   toDatetimeLocalValue,
@@ -14,6 +15,7 @@ import {
 
 interface SurveyResponder {
   id: string;
+  slug: string;
   fullName: string;
   imageUrl: string | null;
 }
@@ -693,7 +695,7 @@ export default function SurveyDetailPage() {
                             {o.responders!.map((r) => (
                               <Link
                                 key={r.id}
-                                href={`/members/${r.id}`}
+                                href={memberProfileHref(r)}
                                 className="flex items-center gap-1.5 rounded-full border border-stone-200 bg-stone-50 py-0.5 pl-0.5 pr-2 text-xs font-medium text-stone-700 transition-colors hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
                               >
                                 <AvatarWithSash

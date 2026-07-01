@@ -74,6 +74,7 @@ export default function TournamentsPage() {
     date: "",
     startTime: "",
     course: "",
+    courseId: null as string | null,
     scoringFormat: "",
     individualOrTeam: "individual" as "individual" | "team",
     teamSize: "2" as "2" | "4",
@@ -144,6 +145,7 @@ export default function TournamentsPage() {
           date: form.date,
           startTime: form.startTime || null,
           course: form.course.trim(),
+          courseId: form.courseId,
           scoringFormat: form.scoringFormat,
           individualOrTeam: form.individualOrTeam,
           teamSize: form.individualOrTeam === "team" ? parseInt(form.teamSize, 10) : null,
@@ -169,6 +171,7 @@ export default function TournamentsPage() {
         date: "",
         startTime: "",
         course: "",
+        courseId: null,
         scoringFormat: "",
         individualOrTeam: "individual",
         teamSize: "2",
@@ -317,8 +320,11 @@ export default function TournamentsPage() {
                 </label>
                 <CourseAutocomplete
                   value={form.course}
-                  onChange={(v) => setForm((p) => ({ ...p, course: v }))}
-                  placeholder="Search California courses"
+                  courseId={form.courseId}
+                  onChange={(name, courseId) =>
+                    setForm((p) => ({ ...p, course: name, courseId: courseId ?? null }))
+                  }
+                  placeholder="Search US golf courses"
                   id="tournament-course"
                   className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />

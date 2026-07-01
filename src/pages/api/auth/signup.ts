@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { hash } from "bcryptjs";
 import { prisma } from "@/lib/db";
+import { findUniqueMemberSlug, memberSlug } from "@/lib/member-slug";
 
 export default async function handler(
   req: NextApiRequest,
@@ -41,11 +42,13 @@ export default async function handler(
       .map((e) => e.trim().toLowerCase())
       .filter(Boolean);
     const role = adminEmails.includes(emailStr) ? "admin" : "member";
+    const slug = await findUniqueMemberSlug(memberSlug("", ""));
     const user = await prisma.user.create({
       data: {
         email: emailStr,
         password: hashed,
         role,
+        slug,
       },
     });
 

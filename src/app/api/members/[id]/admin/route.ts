@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { findMemberByIdOrSlug } from "@/lib/member-resolve";
 
 /**
  * PATCH /api/members/[id]/admin - Update admin-only fields: role, scgaOfficial (admin only)
@@ -14,7 +15,13 @@ export async function PATCH(
     return NextResponse.json(error.json, { status: error.status });
   }
 
-  const { id: userId } = await params;
+  const { id: idOrSlug } = await params;
+
+  const member = await findMemberByIdOrSlug(idOrSlug);
+  if (!member) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+  const userId = member.id;
   const isSelf = userId === session!.user.id;
 
   const body = await request.json().catch(() => ({}));
@@ -62,7 +69,13 @@ export async function POST(
     return NextResponse.json(error.json, { status: error.status });
   }
 
-  const { id: userId } = await params;
+  const { id: idOrSlug } = await params;
+
+  const member = await findMemberByIdOrSlug(idOrSlug);
+  if (!member) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+  const userId = member.id;
 
   if (userId === session!.user.id) {
     return NextResponse.json(

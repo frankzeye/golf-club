@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { AccessDenied } from "@/components/AccessDenied";
 import { AvatarWithSash } from "@/components/AvatarWithSash";
 import { CourseAutocomplete } from "@/components/CourseAutocomplete";
+import { memberProfileHref } from "@/lib/member-slug";
 
 interface UpcomingTournament {
   id: string;
@@ -26,12 +27,14 @@ interface Badge {
 
 interface MemberDetail {
   id: string;
+  slug: string;
   firstName: string;
   lastName: string;
   fullName: string;
   ghinNumber: string | null;
   handicapIndex: number | null;
   homeCourse: string;
+  homeCourseId?: string | null;
   imageUrl: string | null;
   role: string;
   scgaOfficial?: boolean;
@@ -45,6 +48,7 @@ interface MemberDetail {
 export default function MemberDetailPage() {
   const { data: session, status } = useSession();
   const params = useParams();
+  const router = useRouter();
   const id = params?.id as string;
   const [member, setMember] = useState<MemberDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,6 +62,7 @@ export default function MemberDetailPage() {
     ghinNumber: "",
     handicapIndex: "",
     homeCourse: "",
+    homeCourseId: null as string | null,
   });
 
   useEffect(() => {
@@ -76,11 +81,18 @@ export default function MemberDetailPage() {
           ghinNumber: data.ghinNumber ?? "",
           handicapIndex: data.handicapIndex != null ? String(data.handicapIndex) : "",
           homeCourse: data.homeCourse ?? "",
+          homeCourseId: data.homeCourseId ?? null,
         });
       })
       .catch(() => setError("Member not found"))
       .finally(() => setIsLoading(false));
   }, [status, id]);
+
+  useEffect(() => {
+    if (member?.slug && id && id !== member.slug) {
+      router.replace(memberProfileHref(member));
+    }
+  }, [member, id, router]);
 
   const handleToggleAdmin = async (checked: boolean) => {
     if (!member || member.id === session?.user?.id) return;
@@ -123,6 +135,7 @@ export default function MemberDetailPage() {
           ghinNumber: editForm.ghinNumber.trim() || null,
           handicapIndex: hi === "" ? "" : hi,
           homeCourse: editForm.homeCourse.trim() || null,
+          homeCourseId: editForm.homeCourseId,
         }),
       });
       if (!res.ok) {
@@ -138,13 +151,18 @@ export default function MemberDetailPage() {
               firstName: data.firstName,
               lastName: data.lastName,
               fullName: [data.firstName, data.lastName].filter(Boolean).join(" ") || "—",
+              slug: data.slug ?? m.slug,
               cellNumber: data.cellNumber,
               ghinNumber: data.ghinNumber,
               handicapIndex: data.handicapIndex,
               homeCourse: data.homeCourse,
+              homeCourseId: data.homeCourseId ?? null,
             }
           : null
       );
+      if (data.slug && data.slug !== id) {
+        router.replace(memberProfileHref({ slug: data.slug, id: member.id }));
+      }
     } catch {
       setError("Failed to save");
     } finally {
@@ -341,7 +359,14 @@ export default function MemberDetailPage() {
                     <CourseAutocomplete
                       id="edit-homeCourse"
                       value={editForm.homeCourse}
-                      onChange={(v) => setEditForm((p) => ({ ...p, homeCourse: v }))}
+                      courseId={editForm.homeCourseId}
+                      onChange={(name, courseId) =>
+                        setEditForm((p) => ({
+                          ...p,
+                          homeCourse: name,
+                          homeCourseId: courseId ?? null,
+                        }))
+                      }
                       placeholder="Search California courses"
                       className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                     />

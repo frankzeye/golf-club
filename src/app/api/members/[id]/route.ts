@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { findMemberByIdOrSlug } from "@/lib/member-resolve";
+import { memberSlug, syncMemberSlug } from "@/lib/member-slug";
+import { resolveCourseSelection } from "@/lib/golf-course";
 
 /**
  * GET /api/members/[id] - Get a single member's details (requires sign in)
@@ -14,18 +17,25 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id } = await params;
+  const { id: idOrSlug } = await params;
+
+  const resolved = await findMemberByIdOrSlug(idOrSlug);
+  if (!resolved) {
+    return NextResponse.json({ error: "Member not found" }, { status: 404 });
+  }
 
   const user = await prisma.user.findUnique({
-    where: { id },
+    where: { id: resolved.id },
     select: {
       id: true,
+      slug: true,
       firstName: true,
       lastName: true,
       cellNumber: true,
       ghinNumber: true,
       handicapIndex: true,
       homeCourse: true,
+      homeCourseId: true,
       imageUrl: true,
       role: true,
       scgaOfficial: true,
@@ -96,12 +106,14 @@ export async function GET(
 
   const member = {
     id: user.id,
+    slug: user.slug ?? memberSlug(user.firstName, user.lastName),
     firstName: user.firstName ?? "",
     lastName: user.lastName ?? "",
     fullName: [user.firstName, user.lastName].filter(Boolean).join(" ") || "—",
     ghinNumber: user.ghinNumber,
     handicapIndex: user.handicapIndex,
     homeCourse: user.homeCourse ?? "",
+    homeCourseId: user.homeCourseId ?? null,
     imageUrl: user.imageUrl,
     role: user.role,
     scgaOfficial: user.scgaOfficial ?? false,
@@ -135,18 +147,29 @@ export async function PATCH(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { id } = await params;
+  const { id: idOrSlug } = await params;
+
+  const resolved = await findMemberByIdOrSlug(idOrSlug);
+  if (!resolved) {
+    return NextResponse.json({ error: "Member not found" }, { status: 404 });
+  }
 
   try {
     const body = await request.json();
-    const { firstName, lastName, cellNumber, ghinNumber, handicapIndex, homeCourse } = body;
+    const { firstName, lastName, cellNumber, ghinNumber, handicapIndex, homeCourse, homeCourseId } = body;
 
     const data: Record<string, unknown> = {};
     if (firstName != null) data.firstName = String(firstName);
     if (lastName != null) data.lastName = String(lastName);
     if (cellNumber != null) data.cellNumber = cellNumber === "" ? null : String(cellNumber);
     if (ghinNumber != null) data.ghinNumber = ghinNumber === "" ? null : String(ghinNumber);
-    if (homeCourse != null) data.homeCourse = String(homeCourse);
+    if (homeCourse != null || homeCourseId != null) {
+      const courseSelection = await resolveCourseSelection(homeCourseId, homeCourse);
+      if (courseSelection) {
+        data.homeCourse = courseSelection.course || null;
+        data.homeCourseId = courseSelection.courseId;
+      }
+    }
     if (handicapIndex != null) {
       if (handicapIndex === "") {
         data.handicapIndex = null;
@@ -157,27 +180,50 @@ export async function PATCH(
     }
 
     const user = await prisma.user.update({
-      where: { id },
+      where: { id: resolved.id },
       data,
       select: {
         id: true,
+        slug: true,
         firstName: true,
         lastName: true,
         cellNumber: true,
         ghinNumber: true,
         handicapIndex: true,
         homeCourse: true,
+        homeCourseId: true,
+      },
+    });
+
+    if (firstName != null || lastName != null) {
+      await syncMemberSlug(user.id, user.firstName ?? "", user.lastName ?? "");
+    }
+
+    const updated = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: {
+        id: true,
+        slug: true,
+        firstName: true,
+        lastName: true,
+        cellNumber: true,
+        ghinNumber: true,
+        handicapIndex: true,
+        homeCourse: true,
+        homeCourseId: true,
       },
     });
 
     return NextResponse.json({
-      id: user.id,
-      firstName: user.firstName ?? "",
-      lastName: user.lastName ?? "",
-      cellNumber: user.cellNumber,
-      ghinNumber: user.ghinNumber,
-      handicapIndex: user.handicapIndex,
-      homeCourse: user.homeCourse ?? "",
+      id: updated!.id,
+      slug: updated!.slug ?? memberSlug(updated!.firstName, updated!.lastName),
+      firstName: updated!.firstName ?? "",
+      lastName: updated!.lastName ?? "",
+      cellNumber: updated!.cellNumber,
+      ghinNumber: updated!.ghinNumber,
+      handicapIndex: updated!.handicapIndex,
+      homeCourse: updated!.homeCourse ?? "",
+      homeCourseId: updated!.homeCourseId ?? null,
     });
   } catch (error) {
     console.error("Member update failed:", error);

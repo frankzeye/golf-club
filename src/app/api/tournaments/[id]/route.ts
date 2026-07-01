@@ -3,7 +3,9 @@ import { getAuthSession, requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { findTournamentByIdOrSlug } from "@/lib/tournament-resolve";
 import { tournamentSlug, findUniqueSlug } from "@/lib/tournament-slug";
+import { memberSlug } from "@/lib/member-slug";
 import { parseStartTime } from "@/lib/tournament-time";
+import { resolveCourseSelection } from "@/lib/golf-course";
 
 /**
  * GET /api/tournaments/[id] - Get a single tournament's details
@@ -31,6 +33,7 @@ export async function GET(
           user: {
             select: {
               id: true,
+              slug: true,
               firstName: true,
               lastName: true,
               imageUrl: true,
@@ -52,6 +55,7 @@ export async function GET(
 
   const registeredUsers = t.registrations.map((r) => ({
     id: r.user.id,
+    slug: r.user.slug ?? memberSlug(r.user.firstName ?? "", r.user.lastName ?? ""),
     registrationId: r.id,
     firstName: r.user.firstName ?? "",
     lastName: r.user.lastName ?? "",
@@ -69,6 +73,7 @@ export async function GET(
     date: t.date,
     startTime: t.startTime ?? null,
     course: t.course,
+    courseId: t.courseId ?? null,
     scoringFormat: t.scoringFormat,
     individualOrTeam: t.individualOrTeam,
     teamSize: t.teamSize,
@@ -113,6 +118,7 @@ export async function PATCH(
       date,
       startTime,
       course,
+      courseId,
       scoringFormat,
       individualOrTeam,
       teamSize,
@@ -146,8 +152,12 @@ export async function PATCH(
       }
       updates.startTime = startTimeVal;
     }
-    if (course != null && typeof course === "string" && course.trim().length > 0) {
-      updates.course = course.trim();
+    if (course != null || courseId != null) {
+      const courseSelection = await resolveCourseSelection(courseId, course);
+      if (courseSelection?.course) {
+        updates.course = courseSelection.course;
+        updates.courseId = courseSelection.courseId;
+      }
     }
     if (
       scoringFormat != null &&

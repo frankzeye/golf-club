@@ -12,7 +12,8 @@
     "lint": "eslint",
     "postinstall": "node scripts/use-pg-schema.js && prisma generate",
     "db:push": "prisma db push",
-    "scrape:courses": "node scripts/scrape-scga-courses.mjs"
+    "scrape:courses": "node scripts/scrape-scga-courses.mjs",
+    "import:courses": "node scripts/import-golf-courses.js"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
