@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 
 export function Footer() {
-  const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "admin";
+  const { data: session, status } = useSession();
+  const isAdmin =
+    status === "authenticated" && session?.user?.role === "admin";
 
   return (
     <footer className="border-t border-stone-200 bg-white">

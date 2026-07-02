@@ -137,6 +137,15 @@ export function Header() {
                       >
                         My Profile
                       </Link>
+                      {isAdmin ? (
+                        <Link
+                          href="/email-templates"
+                          className="block px-4 py-2 text-sm text-stone-700 hover:bg-stone-50"
+                          onClick={() => setProfileMenuOpen(false)}
+                        >
+                          Email Templates
+                        </Link>
+                      ) : null}
                       <button
                         onClick={() => {
                           setProfileMenuOpen(false);
@@ -199,6 +208,15 @@ export function Header() {
                         >
                           My Profile
                         </Link>
+                        {isAdmin ? (
+                          <Link
+                            href="/email-templates"
+                            className={mobileLinkClass}
+                            onClick={closeMobileMenu}
+                          >
+                            Email Templates
+                          </Link>
+                        ) : null}
                         <button
                           type="button"
                           onClick={() => {
