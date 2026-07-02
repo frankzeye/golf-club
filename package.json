@@ -13,7 +13,8 @@
     "postinstall": "node scripts/use-pg-schema.js && prisma generate",
     "db:push": "prisma db push",
     "scrape:courses": "node scripts/scrape-scga-courses.mjs",
-    "import:courses": "node scripts/import-golf-courses.js"
+    "import:courses": "node scripts/import-golf-courses.js",
+    "ensure:courses": "node scripts/ensure-golf-courses.js"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

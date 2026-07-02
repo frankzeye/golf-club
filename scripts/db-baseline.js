@@ -36,6 +36,11 @@ async function main() {
   execSync(`node ${path.join(__dirname, "apply-migrations.js")}`, {
     stdio: "inherit",
   });
+
+  console.log("Running ensure-golf-courses...");
+  execSync(`node ${path.join(__dirname, "ensure-golf-courses.js")}`, {
+    stdio: "inherit",
+  });
 }
 
 main();

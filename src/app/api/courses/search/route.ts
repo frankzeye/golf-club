@@ -1,36 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 import { formatCourseLabel } from "@/lib/golf-course";
-
-const MAX_RESULTS = 15;
+import {
+  golfCourseDirectoryCount,
+  searchGolfCourses,
+  tokenizeCourseSearchQuery,
+} from "@/lib/course-search";
 
 /**
  * GET /api/courses/search?q=pebble
- * Search US golf courses by name or city
+ * Search US golf courses by name, city, or state (multi-word AND).
  */
 export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get("q")?.trim();
-  if (!q || q.length < 2) {
+  if (!q || tokenizeCourseSearchQuery(q).length === 0) {
     return NextResponse.json([]);
   }
 
   try {
-    const courses = await prisma.$queryRaw<
-      Array<{ id: string; name: string; city: string | null; state: string | null }>
-    >`
-      SELECT id, name, city, state
-      FROM "GolfCourse"
-      WHERE name ILIKE ${"%" + q + "%"}
-         OR city ILIKE ${"%" + q + "%"}
-      ORDER BY
-        CASE
-          WHEN name ILIKE ${q + "%"} THEN 0
-          WHEN name ILIKE ${"%" + q + "%"} THEN 1
-          ELSE 2
-        END,
-        name ASC
-      LIMIT ${MAX_RESULTS}
-    `;
+    const total = await golfCourseDirectoryCount();
+    if (total === 0) {
+      return NextResponse.json(
+        {
+          error:
+            "Course directory has not been loaded on this server yet. Ask an admin to run npm run import:courses.",
+        },
+        { status: 503 }
+      );
+    }
+
+    const courses = await searchGolfCourses(q);
 
     return NextResponse.json(
       courses.map((c) => ({
@@ -43,6 +41,8 @@ export async function GET(request: NextRequest) {
     );
   } catch (error) {
     console.error("GET /api/courses/search failed:", error);
-    return NextResponse.json([]);
+    const message =
+      error instanceof Error ? error.message : "Course search failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

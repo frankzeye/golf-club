@@ -25,7 +25,7 @@ export function CourseAutocomplete({
   value,
   courseId = null,
   onChange,
-  placeholder = "e.g. Pebble Beach Golf Links",
+  placeholder = "Search by course name, city, or both",
   id = "homeCourse",
   className = "",
   disabled = false,
