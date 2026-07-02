@@ -6,6 +6,7 @@ import { outingSlug, findUniqueOutingSlug } from "@/lib/outing-slug";
 import { parseStartTime } from "@/lib/tournament-time";
 import { countConfirmedParticipants } from "@/lib/outing-participants";
 import { resolveCourseSelection } from "@/lib/golf-course";
+import { notifyOutingInvites } from "@/lib/outing-invite-notify";
 
 const MIN_PLAYER_COUNT = 2;
 const MAX_PLAYER_COUNT = 99;
@@ -252,6 +253,20 @@ export async function POST(request: NextRequest) {
       },
       include: outingInclude,
     });
+
+    if (uniqueInviteIds.length > 0) {
+      void notifyOutingInvites(
+        uniqueInviteIds,
+        {
+          id: outing.id,
+          slug: outing.slug,
+          course: outing.course,
+          date: outing.date,
+          createdAt: outing.createdAt,
+        },
+        session.user.name ?? ""
+      ).catch((err) => console.error("Outing invite push failed:", err));
+    }
 
     return NextResponse.json(formatOuting(outing, session.user.id));
   } catch (error) {

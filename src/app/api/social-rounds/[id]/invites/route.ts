@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { findOutingByIdOrSlug } from "@/lib/outing-resolve";
+import { notifyOutingInvites } from "@/lib/outing-invite-notify";
 
 /**
  * POST /api/social-rounds/[id]/invites - Send invites to more members (organizer only)
@@ -58,6 +59,7 @@ export async function POST(
 
     let invited = 0;
     let skipped = 0;
+    const invitedUserIds: string[] = [];
 
     for (const userId of uniqueInviteIds) {
       const status = participantByUserId.get(userId);
@@ -74,6 +76,7 @@ export async function POST(
           data: { status: "invited" },
         });
         invited++;
+        invitedUserIds.push(userId);
         continue;
       }
 
@@ -86,6 +89,7 @@ export async function POST(
         },
       });
       invited++;
+      invitedUserIds.push(userId);
     }
 
     if (invited === 0) {
@@ -94,6 +98,18 @@ export async function POST(
         { status: 400 }
       );
     }
+
+    void notifyOutingInvites(
+      invitedUserIds,
+      {
+        id: outing.id,
+        slug: outing.slug,
+        course: outing.course,
+        date: outing.date,
+        createdAt: outing.createdAt,
+      },
+      session.user.name ?? ""
+    ).catch((err) => console.error("Outing invite push failed:", err));
 
     return NextResponse.json({
       invited,
