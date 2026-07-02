@@ -40,35 +40,56 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email,
           role: user.role,
+          imageUrl: user.imageUrl,
+          scgaOfficial: user.scgaOfficial,
         };
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id;
         token.role = (user as { role?: string }).role;
+        token.imageUrl = (user as { imageUrl?: string | null }).imageUrl ?? null;
+        token.scgaOfficial = (user as { scgaOfficial?: boolean }).scgaOfficial ?? false;
       }
+
+      // Refresh from DB only when the client calls session.update() (e.g. after profile photo).
+      if (trigger === "update" && token.id) {
+        const u = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: {
+            role: true,
+            imageUrl: true,
+            scgaOfficial: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        });
+        if (u) {
+          token.role = u.role ?? "member";
+          token.imageUrl = u.imageUrl ?? null;
+          token.scgaOfficial = u.scgaOfficial ?? false;
+          token.name =
+            [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email;
+        }
+      }
+
       return token;
     },
     async session({ session, token }) {
       if (session.user && token.id) {
         (session.user as { id?: string }).id = token.id as string;
-        let role = token.role as string | undefined;
-        const u = await prisma.user.findUnique({
-          where: { id: token.id as string },
-          select: { role: true, imageUrl: true, scgaOfficial: true },
-        });
-        if (u) {
-          if (!role) {
-            role = u.role ?? "member";
-            token.role = role;
-          }
-          (session.user as { image?: string | null }).image = u.imageUrl ?? null;
-          (session.user as { scgaOfficial?: boolean }).scgaOfficial = u.scgaOfficial ?? false;
+        (session.user as { role?: string }).role = (token.role as string) ?? "member";
+        (session.user as { image?: string | null }).image =
+          (token.imageUrl as string | null) ?? null;
+        (session.user as { scgaOfficial?: boolean }).scgaOfficial =
+          (token.scgaOfficial as boolean) ?? false;
+        if (typeof token.name === "string") {
+          session.user.name = token.name;
         }
-        (session.user as { role?: string }).role = role ?? "member";
       }
       return session;
     },

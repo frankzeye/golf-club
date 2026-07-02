@@ -56,9 +56,17 @@ function formatDate(dateStr: string | null) {
 function ParticipantList({
   participants,
   subtitle,
+  showRemove,
+  onRemove,
+  removingId,
+  removeLabel,
 }: {
   participants: Participant[];
   subtitle: (p: Participant) => string;
+  showRemove?: boolean;
+  onRemove?: (p: Participant) => void;
+  removingId?: string | null;
+  removeLabel?: (p: Participant) => string;
 }) {
   if (participants.length === 0) return null;
 
@@ -86,6 +94,20 @@ function ParticipantList({
             </Link>
             <p className="text-xs text-stone-500">{subtitle(p)}</p>
           </div>
+          {showRemove && onRemove && p.role !== "organizer" ? (
+            <button
+              type="button"
+              onClick={() => onRemove(p)}
+              disabled={removingId === p.id}
+              className="shrink-0 rounded-lg border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-50 disabled:opacity-50"
+            >
+              {removingId === p.id
+                ? p.status === "invited"
+                  ? "Cancelling…"
+                  : "Removing…"
+                : removeLabel?.(p) ?? (p.status === "invited" ? "Cancel invite" : "Remove")}
+            </button>
+          ) : null}
         </li>
       ))}
     </ul>
@@ -105,9 +127,15 @@ export default function OutingDetailPage() {
   const [leaveError, setLeaveError] = useState("");
   const [members, setMembers] = useState<MemberInviteOption[]>([]);
   const [pendingInvites, setPendingInvites] = useState<MemberInviteOption[]>([]);
+  const [pendingConfirmed, setPendingConfirmed] = useState<MemberInviteOption[]>([]);
   const [inviteError, setInviteError] = useState("");
   const [inviteSuccess, setInviteSuccess] = useState("");
   const [isSendingInvites, setIsSendingInvites] = useState(false);
+  const [confirmedError, setConfirmedError] = useState("");
+  const [confirmedSuccess, setConfirmedSuccess] = useState("");
+  const [isAddingConfirmed, setIsAddingConfirmed] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [removeError, setRemoveError] = useState("");
 
   const loadOuting = () => {
     if (!id) return;
@@ -219,6 +247,67 @@ export default function OutingDetailPage() {
     }
   };
 
+  const handleAddConfirmed = async () => {
+    if (!id || pendingConfirmed.length === 0) return;
+    setConfirmedError("");
+    setConfirmedSuccess("");
+    setIsAddingConfirmed(true);
+    try {
+      const res = await fetch(`/api/social-rounds/${id}/participants`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userIds: pendingConfirmed.map((m) => m.id),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setConfirmedError(data.error ?? "Failed to add players");
+        return;
+      }
+      setConfirmedSuccess(data.message ?? "Players added");
+      setPendingConfirmed([]);
+      loadOuting();
+    } catch {
+      setConfirmedError("Failed to add players");
+    } finally {
+      setIsAddingConfirmed(false);
+    }
+  };
+
+  const handleRemovePlayer = async (participant: Participant) => {
+    if (!id) return;
+    const isInvite = participant.status === "invited";
+    const message = isInvite
+      ? `Cancel the invite for ${participant.fullName}?`
+      : `Remove ${participant.fullName} from this outing? They will no longer be listed as confirmed.`;
+    if (!window.confirm(message)) {
+      return;
+    }
+
+    setRemoveError("");
+    setRemovingId(participant.id);
+    try {
+      const res = await fetch(`/api/social-rounds/${id}/participants`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: participant.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setRemoveError(
+          data.error ?? (isInvite ? "Failed to cancel invite" : "Failed to remove player")
+        );
+        return;
+      }
+      loadOuting();
+    } catch {
+      setRemoveError(isInvite ? "Failed to cancel invite" : "Failed to remove player");
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
   if (status === "loading" || (status === "authenticated" && isLoading)) {
     return (
       <div className="flex min-h-screen flex-col bg-stone-50">
@@ -258,6 +347,8 @@ export default function OutingDetailPage() {
     !outing.isInvited &&
     !isFull &&
     outing.status !== "cancelled";
+  const canAcceptInvite =
+    outing.isInvited && !isFull && outing.status !== "cancelled";
   const canLeave = outing.isParticipant || outing.isInvited;
 
   const scheduleLabel = outing.hasBookedTime
@@ -272,7 +363,8 @@ export default function OutingDetailPage() {
   const confirmedPlayers = outing.participants.filter((p) => p.status === "confirmed");
   const invitedPlayers = outing.participants.filter((p) => p.status === "invited");
   const participantIds = outing.participants.map((p) => p.id);
-  const canInviteMore = outing.isCreator && outing.status !== "cancelled";
+  const confirmedIds = confirmedPlayers.map((p) => p.id);
+  const canManagePlayers = outing.isCreator && outing.status !== "cancelled";
 
   return (
     <div className="flex min-h-screen flex-col bg-stone-50">
@@ -360,6 +452,24 @@ export default function OutingDetailPage() {
             </div>
           )}
 
+          {canAcceptInvite && (
+            <div className="mt-6 border-t border-stone-100 pt-6">
+              {joinError && (
+                <p className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {joinError}
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={handleJoin}
+                disabled={isJoining}
+                className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {isJoining ? "Accepting…" : "Accept invite"}
+              </button>
+            </div>
+          )}
+
           {canJoin && (
             <div className="mt-6 border-t border-stone-100 pt-6">
               {joinError && (
@@ -380,15 +490,27 @@ export default function OutingDetailPage() {
 
         </div>
 
-        {confirmedPlayers.length > 0 && (
+        {(confirmedPlayers.length > 0 || canManagePlayers) && (
           <section className="mt-8">
             <h2 className="font-serif text-lg font-semibold text-stone-900">
               Confirmed players
             </h2>
-            <ParticipantList
-              participants={confirmedPlayers}
-              subtitle={(p) => (p.role === "organizer" ? "Organizer" : "Confirmed")}
-            />
+            {removeError ? (
+              <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {removeError}
+              </p>
+            ) : null}
+            {confirmedPlayers.length > 0 ? (
+              <ParticipantList
+                participants={confirmedPlayers}
+                subtitle={(p) => (p.role === "organizer" ? "Organizer" : "Confirmed")}
+                showRemove={canManagePlayers}
+                onRemove={handleRemovePlayer}
+                removingId={removingId}
+              />
+            ) : (
+              <p className="mt-2 text-sm text-stone-500">No confirmed players yet.</p>
+            )}
           </section>
         )}
 
@@ -403,11 +525,14 @@ export default function OutingDetailPage() {
             <ParticipantList
               participants={invitedPlayers}
               subtitle={() => "Invited"}
+              showRemove={canManagePlayers}
+              onRemove={handleRemovePlayer}
+              removingId={removingId}
             />
           </section>
         )}
 
-        {canInviteMore && (
+        {canManagePlayers && (
           <section className="mt-8 rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
             <h2 className="font-serif text-lg font-semibold text-stone-900">
               Invite more players
@@ -444,6 +569,47 @@ export default function OutingDetailPage() {
                 : pendingInvites.length === 0
                   ? "Select members to invite"
                   : `Send ${pendingInvites.length} invite${pendingInvites.length === 1 ? "" : "s"}`}
+            </button>
+          </section>
+        )}
+
+        {canManagePlayers && !isFull && (
+          <section className="mt-8 rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
+            <h2 className="font-serif text-lg font-semibold text-stone-900">
+              Add confirmed players
+            </h2>
+            <p className="mt-1 text-sm text-stone-500">
+              Add members directly to the outing without sending an invite.
+            </p>
+            <div className="mt-5">
+              <MemberInvitePicker
+                members={members}
+                selected={pendingConfirmed}
+                onChange={setPendingConfirmed}
+                excludeIds={confirmedIds}
+              />
+            </div>
+            {confirmedError && (
+              <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {confirmedError}
+              </p>
+            )}
+            {confirmedSuccess && (
+              <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                {confirmedSuccess}
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={handleAddConfirmed}
+              disabled={pendingConfirmed.length === 0 || isAddingConfirmed}
+              className="mt-4 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {isAddingConfirmed
+                ? "Adding…"
+                : pendingConfirmed.length === 0
+                  ? "Select members to add"
+                  : `Add ${pendingConfirmed.length} confirmed player${pendingConfirmed.length === 1 ? "" : "s"}`}
             </button>
           </section>
         )}

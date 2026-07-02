@@ -1,6 +1,12 @@
+"use client";
+
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 
 export function Footer() {
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "admin";
+
   return (
     <footer className="border-t border-stone-200 bg-white">
       <div className="mx-auto flex max-w-4xl flex-col items-center justify-between gap-4 px-4 py-6 sm:flex-row">
@@ -11,6 +17,11 @@ export function Footer() {
           <Link href="/terms" className="hover:text-emerald-600">
             Terms of Use
           </Link>
+          {isAdmin ? (
+            <Link href="/email-templates" className="hover:text-emerald-600">
+              Email Templates
+            </Link>
+          ) : null}
         </div>
         <div className="flex items-center gap-4">
           <a

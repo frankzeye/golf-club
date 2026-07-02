@@ -99,7 +99,7 @@ export async function POST(
       );
     }
 
-    void notifyOutingInvites(
+    await notifyOutingInvites(
       invitedUserIds,
       {
         id: outing.id,
@@ -109,7 +109,7 @@ export async function POST(
         createdAt: outing.createdAt,
       },
       session.user.name ?? ""
-    ).catch((err) => console.error("Outing invite push failed:", err));
+    ).catch((err) => console.error("Outing invite notifications failed:", err));
 
     return NextResponse.json({
       invited,

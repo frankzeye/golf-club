@@ -61,6 +61,7 @@ export function Header() {
   const navLinks = NAV_LINKS.filter(
     (item) => item.href !== "/social-rounds" || isAdmin
   );
+  const showSignedIn = status === "authenticated" && !!session;
 
   return (
     <header className="relative border-b border-stone-200 bg-white">
@@ -70,7 +71,35 @@ export function Header() {
         </Link>
 
         {status === "loading" ? (
-          <span className="text-sm text-stone-400">Loading…</span>
+          <>
+            <nav className="hidden items-center gap-6 md:flex">
+              {navLinks.map((item) => (
+                <Link key={item.href} href={item.href} className={linkClass}>
+                  {item.label}
+                </Link>
+              ))}
+              <Link href="/signin" className={linkClass}>
+                Sign in
+              </Link>
+              <Link
+                href="/signup"
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+              >
+                Create Account
+              </Link>
+            </nav>
+            <div className="md:hidden">
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen((o) => !o)}
+                className="flex h-10 w-10 items-center justify-center rounded-lg border border-stone-200 text-stone-600 hover:bg-stone-50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                aria-expanded={mobileMenuOpen}
+                aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+              >
+                <MenuIcon open={mobileMenuOpen} />
+              </button>
+            </div>
+          </>
         ) : (
           <>
             {/* Desktop navigation */}
@@ -80,7 +109,7 @@ export function Header() {
                   {item.label}
                 </Link>
               ))}
-              {session ? (
+              {showSignedIn ? (
                 <div className="relative" ref={profileMenuRef}>
                   <button
                     type="button"
@@ -161,7 +190,7 @@ export function Header() {
                       </Link>
                     ))}
                     <div className="my-2 border-t border-stone-200" />
-                    {session ? (
+                    {showSignedIn ? (
                       <>
                         <Link
                           href="/profile"

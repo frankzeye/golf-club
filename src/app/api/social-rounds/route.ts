@@ -255,7 +255,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (uniqueInviteIds.length > 0) {
-      void notifyOutingInvites(
+      await notifyOutingInvites(
         uniqueInviteIds,
         {
           id: outing.id,
@@ -265,7 +265,7 @@ export async function POST(request: NextRequest) {
           createdAt: outing.createdAt,
         },
         session.user.name ?? ""
-      ).catch((err) => console.error("Outing invite push failed:", err));
+      ).catch((err) => console.error("Outing invite notifications failed:", err));
     }
 
     return NextResponse.json(formatOuting(outing, session.user.id));

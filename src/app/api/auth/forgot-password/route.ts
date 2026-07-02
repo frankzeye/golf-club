@@ -2,18 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { generatePasswordResetSecret, hashPasswordResetSecret } from "@/lib/reset-token";
 import { sendPasswordResetEmail } from "@/lib/send-password-reset-email";
+import { getSiteBaseUrl } from "@/lib/site-url";
 
 const RESET_TTL_MS = 60 * 60 * 1000;
 
 function normalizeEmail(value: unknown): string {
   return typeof value === "string" ? value.toLowerCase().trim() : "";
-}
-
-function baseUrl(): string {
-  const u = process.env.NEXTAUTH_URL?.replace(/\/$/, "");
-  if (u) return u;
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return "http://localhost:3000";
 }
 
 async function maskTiming(): Promise<void> {
@@ -67,7 +61,7 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  const resetUrl = `${baseUrl()}/reset-password?token=${encodeURIComponent(secret)}`;
+  const resetUrl = `${getSiteBaseUrl()}/reset-password?token=${encodeURIComponent(secret)}`;
 
   try {
     await sendPasswordResetEmail(user.email, resetUrl);
