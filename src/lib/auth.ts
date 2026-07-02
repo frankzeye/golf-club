@@ -7,6 +7,36 @@ import { getAuthSession } from "@/lib/mobile-auth";
 
 export { getAuthSession, getAuthSessionFromApiRequest, createMobileAuthToken } from "@/lib/mobile-auth";
 
+async function refreshUserTokenFromDb(token: {
+  id?: string;
+  role?: string;
+  imageUrl?: string | null;
+  scgaOfficial?: boolean;
+  name?: string | null;
+}) {
+  if (!token.id) return;
+
+  const user = await prisma.user.findUnique({
+    where: { id: token.id },
+    select: {
+      role: true,
+      imageUrl: true,
+      scgaOfficial: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+    },
+  });
+
+  if (!user) return;
+
+  token.role = user.role ?? "member";
+  token.imageUrl = user.imageUrl ?? null;
+  token.scgaOfficial = user.scgaOfficial ?? false;
+  token.name =
+    [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
+}
+
 /** Returns session if user is admin, otherwise returns JSON 403 response. Use in API routes. */
 export async function requireAdmin(request?: NextRequest) {
   const session = await getAuthSession(request);
@@ -53,28 +83,16 @@ export const authOptions: NextAuthOptions = {
         token.role = (user as { role?: string }).role;
         token.imageUrl = (user as { imageUrl?: string | null }).imageUrl ?? null;
         token.scgaOfficial = (user as { scgaOfficial?: boolean }).scgaOfficial ?? false;
+        token.imageLookupDone = Boolean(token.imageUrl);
       }
 
-      // Refresh from DB only when the client calls session.update() (e.g. after profile photo).
       if (trigger === "update" && token.id) {
-        const u = await prisma.user.findUnique({
-          where: { id: token.id as string },
-          select: {
-            role: true,
-            imageUrl: true,
-            scgaOfficial: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        });
-        if (u) {
-          token.role = u.role ?? "member";
-          token.imageUrl = u.imageUrl ?? null;
-          token.scgaOfficial = u.scgaOfficial ?? false;
-          token.name =
-            [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email;
-        }
+        await refreshUserTokenFromDb(token);
+        token.imageLookupDone = true;
+      } else if (token.id && !token.imageUrl && !token.imageLookupDone) {
+        // Backfill profile photo when JWT was issued before a photo existed.
+        await refreshUserTokenFromDb(token);
+        token.imageLookupDone = true;
       }
 
       return token;

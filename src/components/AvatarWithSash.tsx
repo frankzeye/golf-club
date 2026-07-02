@@ -1,5 +1,7 @@
 "use client";
 
+import { useState, useEffect } from "react";
+
 interface AvatarWithSashProps {
   imageUrl: string | null;
   alt: string;
@@ -35,6 +37,12 @@ export function AvatarWithSash({
 }: AvatarWithSashProps) {
   const px = sizePx[size];
   const sizeClass = fill ? "h-full w-full" : sizeClasses[size];
+  const [imageFailed, setImageFailed] = useState(false);
+  const showImage = Boolean(imageUrl) && !imageFailed;
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [imageUrl]);
 
   return (
     <div
@@ -45,13 +53,14 @@ export function AvatarWithSash({
           : { width: px, height: px, minWidth: px, maxWidth: px }
       }
     >
-      {imageUrl ? (
+      {showImage ? (
         <img
-          src={imageUrl}
+          src={imageUrl!}
           alt={alt}
           width={px}
           height={px}
           className="block h-full w-full object-cover"
+          onError={() => setImageFailed(true)}
         />
       ) : (
         <div className="flex h-full w-full items-center justify-center bg-stone-200 text-[10px] text-stone-500">
