@@ -7,10 +7,13 @@ const BRAND = {
   textBody: "#333333",
   textMuted: "#666666",
   textLight: "#888888",
-  background: "#f5f3ef",
+  background: "#f4f1ee",
   white: "#ffffff",
   divider: "#ebe8e3",
 };
+
+/** Outer background used in sent mail and admin preview. */
+export const EMAIL_LAYOUT_BACKGROUND = BRAND.background;
 
 const FONT_FAMILY =
   '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif';
@@ -43,7 +46,7 @@ function emailBrandHeader(baseUrl: string): string {
 
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
   <tr>
-    <td align="center" style="padding:0 0 36px 0;">
+    <td align="center" style="padding:0 0 32px 0;">
       <img
         src="${logoUrl}"
         alt="Spencer's Crossing Golf Club"
@@ -80,15 +83,15 @@ export function wrapEmailLayout(
   ${preheaderBlock}
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:${BRAND.background};${FONT}">
     <tr>
-      <td align="center" style="padding:48px 20px;">
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560" style="max-width:560px;width:100%;background-color:${BRAND.white};border-radius:12px;${FONT}">
+      <td align="center" style="padding:40px 16px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560" style="max-width:560px;width:100%;background-color:${BRAND.white};border-radius:20px;overflow:hidden;${FONT}">
           <tr>
-            <td style="padding:48px 48px 40px;${FONT}">
+            <td style="padding:40px 40px 36px;${FONT}">
               ${emailBrandHeader(baseUrl)}
               ${bodyHtml}
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:40px;${FONT}">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:32px;${FONT}">
                 <tr>
-                  <td style="border-top:1px solid ${BRAND.divider};padding-top:24px;font-size:12px;line-height:1.6;color:${BRAND.textLight};text-align:left;${FONT}">
+                  <td style="border-top:1px solid ${BRAND.divider};padding-top:20px;font-size:12px;line-height:1.6;color:${BRAND.textLight};text-align:left;${FONT}">
                     Spencer's Crossing Golf Club
                   </td>
                 </tr>

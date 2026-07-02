@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 
 import { buildEmailPreviewHtml } from "@/lib/email-preview";
+import { EMAIL_LAYOUT_BACKGROUND } from "@/lib/email-layout";
 import type { EmailTemplateSlug } from "@/lib/email-templates";
 
 type EmailTemplatePreviewProps = {
@@ -36,8 +37,8 @@ export function EmailTemplatePreview({ slug, subject, htmlBody }: EmailTemplateP
         title="Email preview"
         srcDoc={preview.html}
         sandbox=""
-        className="w-full rounded-lg border border-stone-200 bg-white"
-        style={{ height: "640px" }}
+        className="w-full rounded-lg border border-stone-200"
+        style={{ height: "640px", backgroundColor: EMAIL_LAYOUT_BACKGROUND }}
       />
     </div>
   );

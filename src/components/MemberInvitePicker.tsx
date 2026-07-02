@@ -13,6 +13,7 @@ interface MemberInvitePickerProps {
   selected: MemberOption[];
   onChange: (selected: MemberOption[]) => void;
   excludeIds?: string[];
+  maxSelections?: number;
 }
 
 export function MemberInvitePicker({
@@ -20,14 +21,16 @@ export function MemberInvitePicker({
   selected,
   onChange,
   excludeIds = [],
+  maxSelections,
 }: MemberInvitePickerProps) {
   const favoriteMembers = members.filter((m) => m.isFavorite);
   const selectedIds = new Set(selected.map((m) => m.id));
+  const atMax = maxSelections != null && selected.length >= maxSelections;
 
   const toggleInvite = (member: MemberOption) => {
     if (selectedIds.has(member.id)) {
       onChange(selected.filter((m) => m.id !== member.id));
-    } else {
+    } else if (!atMax) {
       onChange([...selected, { id: member.id, fullName: member.fullName }]);
     }
   };
@@ -35,10 +38,11 @@ export function MemberInvitePicker({
   const inviteAllFavorites = () => {
     const toAdd = favoriteMembers.filter((m) => !selectedIds.has(m.id));
     if (toAdd.length === 0) return;
-    onChange([
+    const combined = [
       ...selected,
       ...toAdd.map((m) => ({ id: m.id, fullName: m.fullName })),
-    ]);
+    ];
+    onChange(maxSelections != null ? combined.slice(0, maxSelections) : combined);
   };
 
   return (
@@ -105,6 +109,7 @@ export function MemberInvitePicker({
           selected={selected}
           onChange={onChange}
           excludeIds={excludeIds}
+          maxSelections={maxSelections}
         />
       </div>
     </div>

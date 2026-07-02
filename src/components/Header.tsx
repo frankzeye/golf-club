@@ -9,6 +9,7 @@ import { ClubLogo } from "@/components/ClubLogo";
 const NAV_LINKS = [
   { href: "/tournaments", label: "Tournaments" },
   { href: "/social-rounds", label: "Social Rounds" },
+  { href: "/play-round", label: "Play Round" },
   { href: "/tee-times", label: "Tee Times" },
   { href: "/surveys", label: "Surveys" },
   { href: "/members", label: "Members" },
@@ -59,7 +60,8 @@ export function Header() {
 
   const isAdmin = session?.user?.role === "admin";
   const navLinks = NAV_LINKS.filter(
-    (item) => item.href !== "/social-rounds" || isAdmin
+    (item) =>
+      (item.href !== "/social-rounds" && item.href !== "/play-round") || isAdmin
   );
   const showSignedIn = status === "authenticated" && !!session;
 
