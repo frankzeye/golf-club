@@ -79,18 +79,50 @@ async function main() {
       // $executeRawUnsafe() — which only accepts one statement at a time —
       // does not fail with "cannot insert multiple commands into a prepared
       // statement".
-      const statements = sql
-        .split(";")
-        .map((s) => s.trim())
-        // Drop chunks that are empty or consist only of comments.
-        .filter((s) => {
-          if (!s) return false;
-          const stripped = s
+      // Split on semicolons that are outside single-quoted SQL strings.
+      // This avoids breaking statements that contain semicolons inside
+      // string literals (e.g. HTML with inline CSS).
+      function splitSqlStatements(rawSql) {
+        const results = [];
+        let current = "";
+        let inString = false;
+        for (let i = 0; i < rawSql.length; i++) {
+          const ch = rawSql[i];
+          if (inString) {
+            current += ch;
+            // Two consecutive single quotes ('') are an escaped quote inside a SQL string.
+            if (ch === "'" && rawSql[i + 1] === "'") {
+              current += rawSql[i + 1];
+              i++;
+            } else if (ch === "'") {
+              inString = false;
+            }
+          } else {
+            if (ch === "'") {
+              inString = true;
+              current += ch;
+            } else if (ch === ";") {
+              const trimmed = current.trim();
+              if (trimmed) results.push(trimmed);
+              current = "";
+            } else {
+              current += ch;
+            }
+          }
+        }
+        const trimmed = current.trim();
+        if (trimmed) {
+          // Drop trailing chunks that are only comments or whitespace.
+          const stripped = trimmed
             .replace(/--[^\n]*/g, "")
             .replace(/\/\*[\s\S]*?\*\//g, "")
             .trim();
-          return stripped.length > 0;
-        });
+          if (stripped.length > 0) results.push(trimmed);
+        }
+        return results;
+      }
+
+      const statements = splitSqlStatements(sql);
 
       for (const statement of statements) {
         try {
