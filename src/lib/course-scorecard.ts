@@ -93,3 +93,103 @@ export function formatScoreToPar(strokes: number, par: number): string {
   if (diff === 0) return "E";
   return diff > 0 ? `+${diff}` : String(diff);
 }
+
+/** Max selectable strokes for score entry (par 4 → 8, par 5 → 10). */
+export function maxStrokesForPar(par: number): number {
+  if (par >= 5) return 10;
+  if (par === 4) return 8;
+  return Math.max(1, par + 3);
+}
+
+export function quickScoreOptions(par: number): number[] {
+  const min = Math.max(1, par - 2);
+  const max = maxStrokesForPar(par);
+  const options: number[] = [];
+  for (let n = min; n <= max; n++) options.push(n);
+  return options;
+}
+
+export function formatRelativeToPar(diff: number): string {
+  if (diff === 0) return "E";
+  return diff > 0 ? `+${diff}` : String(diff);
+}
+
+export function playerCumulativeToPar(
+  scores: Record<string, number>,
+  scorecard: ScorecardHole[]
+): number | null {
+  let diff = 0;
+  let hasScore = false;
+  for (const hole of scorecard) {
+    const strokes = scores[String(hole.hole)];
+    if (strokes != null) {
+      diff += strokes - hole.par;
+      hasScore = true;
+    }
+  }
+  return hasScore ? diff : null;
+}
+
+export interface LeaderboardRow<TPlayer> {
+  player: TPlayer;
+  rank: number;
+  total: number;
+  holesPlayed: number;
+  toPar: number | null;
+}
+
+export function buildLeaderboard<
+  T extends {
+    id: string;
+    total: number;
+    holesPlayed: number;
+    scores: Record<string, number>;
+  },
+>(players: T[], scorecard: ScorecardHole[]): LeaderboardRow<T>[] {
+  const sorted = [...players].sort((a, b) => {
+    const aToPar = playerCumulativeToPar(a.scores, scorecard);
+    const bToPar = playerCumulativeToPar(b.scores, scorecard);
+    if (aToPar == null && bToPar == null) return 0;
+    if (aToPar == null) return 1;
+    if (bToPar == null) return -1;
+    if (aToPar !== bToPar) return aToPar - bToPar;
+    if (a.total !== b.total) return a.total - b.total;
+    return b.holesPlayed - a.holesPlayed;
+  });
+
+  return sorted.map((player, index) => {
+    const toPar = playerCumulativeToPar(player.scores, scorecard);
+    let rank = index + 1;
+    if (index > 0) {
+      const prev = sorted[index - 1];
+      const prevToPar = playerCumulativeToPar(prev.scores, scorecard);
+      if (
+        prevToPar === toPar &&
+        prev.total === player.total &&
+        prev.holesPlayed === player.holesPlayed
+      ) {
+        let r = index;
+        while (r > 0) {
+          const p = sorted[r - 1];
+          const pPar = playerCumulativeToPar(p.scores, scorecard);
+          if (
+            pPar === toPar &&
+            p.total === player.total &&
+            p.holesPlayed === player.holesPlayed
+          ) {
+            r--;
+          } else break;
+        }
+        rank = r + 1;
+      }
+    }
+
+    return {
+      player,
+      rank,
+      total: player.total,
+      holesPlayed: player.holesPlayed,
+      toPar,
+    };
+  });
+}

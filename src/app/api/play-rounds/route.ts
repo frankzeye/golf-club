@@ -6,6 +6,7 @@ import {
   formatPlayRoundDetail,
   formatPlayRoundSummary,
   loadPlayRoundScorecard,
+  parsePlayRoundHandicapIndex,
   playRoundInclude,
 } from "@/lib/play-round-format";
 import { findUniquePlayRoundSlug, playRoundSlug } from "@/lib/play-round-slug";
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { course, courseId, partnerUserIds } = body;
+    const { course, courseId, partnerUserIds, playerHandicaps } = body;
 
     if (!courseId || typeof courseId !== "string") {
       return NextResponse.json(
@@ -76,10 +77,22 @@ export async function POST(request: NextRequest) {
     const playerIds = [session!.user!.id, ...uniquePartnerIds];
     const existingUsers = await prisma.user.findMany({
       where: { id: { in: playerIds } },
-      select: { id: true },
+      select: { id: true, handicapIndex: true },
     });
     if (existingUsers.length !== playerIds.length) {
       return NextResponse.json({ error: "One or more members not found" }, { status: 400 });
+    }
+    const userById = new Map(existingUsers.map((u) => [u.id, u]));
+
+    const handicapOverrides: Record<string, unknown> =
+      playerHandicaps && typeof playerHandicaps === "object" && !Array.isArray(playerHandicaps)
+        ? playerHandicaps
+        : {};
+
+    function resolveHandicap(userId: string): number | null {
+      const parsed = parsePlayRoundHandicapIndex(handicapOverrides[userId]);
+      if (parsed !== undefined) return parsed;
+      return userById.get(userId)?.handicapIndex ?? null;
     }
 
     const golfCourse = await prisma.golfCourse.findUnique({
@@ -107,6 +120,7 @@ export async function POST(request: NextRequest) {
           create: playerIds.map((userId) => ({
             userId,
             scores: {},
+            handicapIndex: resolveHandicap(userId),
           })),
         },
       },

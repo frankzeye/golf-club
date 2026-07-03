@@ -75,3 +75,33 @@ export async function PATCH(
     return NextResponse.json({ error: "Failed to update play round" }, { status: 500 });
   }
 }
+
+/**
+ * DELETE /api/play-rounds/[id] — Delete a play round and all scores (admin only).
+ */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { error } = await requireAdmin(request);
+  if (error) {
+    return NextResponse.json(error.json, { status: error.status });
+  }
+
+  try {
+    const { id } = await params;
+    const round = await findPlayRoundByIdOrSlug(id);
+    if (!round) {
+      return NextResponse.json({ error: "Play round not found" }, { status: 404 });
+    }
+
+    await prisma.playRound.delete({
+      where: { id: round.id },
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("DELETE /api/play-rounds/[id] failed:", err);
+    return NextResponse.json({ error: "Failed to delete play round" }, { status: 500 });
+  }
+}

@@ -219,12 +219,13 @@ model PlayRound {
 }
 
 model PlayRoundPlayer {
-  id          String   @id @default(cuid())
-  playRoundId String
-  userId      String
-  scores      Json     @default("{}")
-  playRound   PlayRound @relation(fields: [playRoundId], references: [id], onDelete: Cascade)
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String   @id @default(cuid())
+  playRoundId    String
+  userId         String
+  scores         Json     @default("{}")
+  handicapIndex  Float?
+  playRound      PlayRound @relation(fields: [playRoundId], references: [id], onDelete: Cascade)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([playRoundId, userId])
 }

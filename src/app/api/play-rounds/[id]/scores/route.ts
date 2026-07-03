@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { parsePlayerScores } from "@/lib/course-scorecard";
-import { formatPlayRoundDetail, playRoundInclude } from "@/lib/play-round-format";
+import { maxStrokesForPar, parsePlayerScores } from "@/lib/course-scorecard";
+import { formatPlayRoundDetail, loadPlayRoundScorecard, playRoundInclude } from "@/lib/play-round-format";
 import { findPlayRoundByIdOrSlug } from "@/lib/play-round-slug";
 
 /**
@@ -49,9 +49,15 @@ export async function PATCH(
     if (strokesRaw === null || strokesRaw === "" || strokesRaw === undefined) {
       delete scores[holeKey];
     } else {
+      const scorecard = await loadPlayRoundScorecard(round.courseId, round.holeCount, null);
+      const holePar = scorecard.find((h) => h.hole === hole)?.par ?? 4;
+      const maxStrokes = maxStrokesForPar(holePar);
       const strokes = Number(strokesRaw);
-      if (!Number.isInteger(strokes) || strokes < 1 || strokes > 20) {
-        return NextResponse.json({ error: "Strokes must be between 1 and 20" }, { status: 400 });
+      if (!Number.isInteger(strokes) || strokes < 1 || strokes > maxStrokes) {
+        return NextResponse.json(
+          { error: `Strokes must be between 1 and ${maxStrokes}` },
+          { status: 400 }
+        );
       }
       scores[holeKey] = strokes;
     }

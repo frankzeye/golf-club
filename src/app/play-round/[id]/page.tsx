@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { AdminPageShell } from "@/components/AdminPageShell";
 import {
   PlayRoundScorecard,
@@ -23,11 +23,13 @@ interface PlayRoundDetail {
 
 export default function PlayRoundDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const id = typeof params?.id === "string" ? params.id : "";
   const [round, setRound] = useState<PlayRoundDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [statusSaving, setStatusSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const loadRound = useCallback(async () => {
     if (!id) return;
@@ -77,6 +79,30 @@ export default function PlayRoundDetailPage() {
     }
   }
 
+  async function handleCancel() {
+    if (!round) return;
+    const confirmed = window.confirm(
+      "Delete this play round? All scores will be permanently removed. This cannot be undone."
+    );
+    if (!confirmed) return;
+
+    setDeleting(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/play-rounds/${round.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Failed to delete round");
+        return;
+      }
+      router.push("/play-round");
+    } catch {
+      setError("Failed to delete round");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <AdminPageShell pageName="Play Round" loading={loading} maxWidthClass="max-w-6xl">
       <Link
@@ -119,7 +145,7 @@ export default function PlayRoundDetailPage() {
               <button
                 type="button"
                 onClick={toggleStatus}
-                disabled={statusSaving}
+                disabled={statusSaving || deleting}
                 className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:opacity-50"
               >
                 {statusSaving
@@ -128,8 +154,22 @@ export default function PlayRoundDetailPage() {
                     ? "Reopen round"
                     : "Mark complete"}
               </button>
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={deleting || statusSaving}
+                className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:opacity-50"
+              >
+                {deleting ? "Deleting…" : "Cancel"}
+              </button>
             </div>
           </div>
+
+          {error && round ? (
+            <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {error}
+            </p>
+          ) : null}
 
           <PlayRoundScorecard
             roundId={round.id}

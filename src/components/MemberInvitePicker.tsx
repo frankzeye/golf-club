@@ -6,6 +6,7 @@ import { MemberAutocomplete, type MemberOption } from "@/components/MemberAutoco
 export interface MemberInviteOption extends MemberOption {
   imageUrl?: string | null;
   isFavorite?: boolean;
+  handicapIndex?: number | null;
 }
 
 interface MemberInvitePickerProps {

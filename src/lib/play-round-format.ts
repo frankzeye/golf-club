@@ -35,6 +35,7 @@ type PlayRoundWithRelations = Awaited<
     id: string;
     userId: string;
     scores: unknown;
+    handicapIndex: number | null;
     user: {
       id: string;
       slug: string | null;
@@ -64,6 +65,15 @@ function formatUser(user: PlayRoundWithRelations["createdBy"]) {
     imageUrl: user.imageUrl,
     scgaOfficial: user.scgaOfficial ?? false,
   };
+}
+
+/** Parse handicap for play round setup; undefined = omit from map (use profile). */
+export function parsePlayRoundHandicapIndex(raw: unknown): number | null | undefined {
+  if (raw === undefined) return undefined;
+  if (raw === null || raw === "") return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0 || n > 54) return undefined;
+  return n;
 }
 
 export async function loadPlayRoundScorecard(
@@ -112,6 +122,7 @@ export async function formatPlayRoundDetail(
       fullName: user.fullName,
       imageUrl: user.imageUrl,
       scgaOfficial: user.scgaOfficial,
+      handicapIndex: player.handicapIndex,
       scores,
       total: totalStrokes(scores),
       holesPlayed: holesPlayed(scores),
@@ -147,6 +158,7 @@ export function formatPlayRoundSummary(round: PlayRoundWithRelations) {
       fullName: user.fullName,
       imageUrl: user.imageUrl,
       scgaOfficial: user.scgaOfficial,
+      handicapIndex: player.handicapIndex,
       total: totalStrokes(scores),
       holesPlayed: holesPlayed(scores),
     };
