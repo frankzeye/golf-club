@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const outings = await prisma.outing.findMany({
-      where: { status: { not: "cancelled" } },
+      where: { kind: "social", status: { not: "cancelled" } },
       orderBy: [{ date: "asc" }, { createdAt: "desc" }],
       include: outingInclude,
     });

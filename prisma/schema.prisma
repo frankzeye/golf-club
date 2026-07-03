@@ -22,6 +22,7 @@ model GolfCourse {
   users       User[]
   tournaments Tournament[]
   outings     Outing[]
+  playRounds  PlayRound[]
 
   @@index([name])
   @@index([state])
@@ -51,6 +52,8 @@ model User {
   passwordResetTokens PasswordResetToken[]
   outingsCreated   Outing[] @relation("OutingCreator")
   outingParticipants OutingParticipant[]
+  playRoundsCreated PlayRound[] @relation("PlayRoundCreator")
+  playRoundPlayers PlayRoundPlayer[]
   favorites        MemberFavorite[] @relation("UserFavorites")
   favoritedBy      MemberFavorite[] @relation("FavoritedByUsers")
   pushTokens       PushToken[]
@@ -198,6 +201,32 @@ model OutingParticipant {
   outing   Outing @relation(fields: [outingId], references: [id], onDelete: Cascade)
   user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@unique([outingId, userId])
+}
+
+model PlayRound {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  course      String
+  courseId    String?
+  courseRef   GolfCourse? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  holeCount   Int      @default(18)
+  status      String   @default("in_progress") // in_progress | completed
+  createdById String
+  createdBy   User     @relation("PlayRoundCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  players     PlayRoundPlayer[]
+}
+
+model PlayRoundPlayer {
+  id          String   @id @default(cuid())
+  playRoundId String
+  userId      String
+  scores      Json     @default("{}")
+  playRound   PlayRound @relation(fields: [playRoundId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([playRoundId, userId])
 }
 
 model Comment {

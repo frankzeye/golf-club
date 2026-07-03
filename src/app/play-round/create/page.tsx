@@ -53,13 +53,13 @@ export default function CreatePlayRoundPage() {
     e.preventDefault();
     setError("");
 
-    if (!course.trim()) {
-      setError("Choose a course to continue.");
+    if (!courseId) {
+      setError("Select a course from the search results so we can load the scorecard.");
       return;
     }
 
-    if (partners.length === 0) {
-      setError("Select at least one member to play with.");
+    if (!course.trim()) {
+      setError("Choose a course to continue.");
       return;
     }
 
@@ -79,7 +79,7 @@ export default function CreatePlayRoundPage() {
         setError(data.error ?? "Failed to create play round");
         return;
       }
-      router.push(`/social-rounds/${data.slug}`);
+      router.push(`/play-round/${data.slug}`);
     } catch {
       setError("Failed to create play round");
     } finally {
@@ -99,7 +99,8 @@ export default function CreatePlayRoundPage() {
       <div className="mt-4 rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">
         <h1 className="font-serif text-2xl font-semibold text-stone-900">New Round</h1>
         <p className="mt-1 text-sm text-stone-600">
-          Pick a course and who you&apos;re playing with.
+          Pick a course from search and add playing partners. You&apos;ll enter scores on the
+          scorecard after starting the round.
         </p>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-8">
@@ -125,7 +126,8 @@ export default function CreatePlayRoundPage() {
           <div>
             <p className="text-sm font-medium text-stone-700">Playing with</p>
             <p className="mt-1 text-sm text-stone-500">
-              Add up to three playing partners. You&apos;ll be included automatically.
+              Add up to three playing partners, or leave blank for a solo round. You&apos;ll be
+              included automatically.
             </p>
             <div className="mt-3">
               <MemberInvitePicker

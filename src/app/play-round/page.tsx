@@ -5,21 +5,22 @@ import Link from "next/link";
 import { AdminPageShell } from "@/components/AdminPageShell";
 import { AvatarWithSash } from "@/components/AvatarWithSash";
 
-interface Participant {
+interface PlayerSummary {
   id: string;
   fullName: string;
   imageUrl: string | null;
-  status?: string;
+  total: number;
+  holesPlayed: number;
 }
 
-interface PlayRound {
+interface PlayRoundSummary {
   id: string;
   slug: string;
   course: string;
-  playerCount: number;
-  participantCount: number;
+  status: string;
   createdAt: string;
-  participants: Participant[];
+  holeCount: number;
+  players: PlayerSummary[];
 }
 
 function formatCreatedAt(dateStr: string) {
@@ -31,50 +32,65 @@ function formatCreatedAt(dateStr: string) {
   });
 }
 
-function PlayRoundCard({ round }: { round: PlayRound }) {
-  const confirmedPlayers = round.participants.filter((p) => p.status === "confirmed");
-
+function PlayRoundCard({ round }: { round: PlayRoundSummary }) {
   return (
     <Link
-      href={`/social-rounds/${round.slug}`}
+      href={`/play-round/${round.slug}`}
       className="block rounded-xl border border-stone-200 bg-white p-5 shadow-sm transition-colors hover:border-emerald-300"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <h3 className="font-serif text-lg font-semibold text-stone-900">{round.course}</h3>
           <p className="mt-1 text-sm text-stone-600">
-            {formatCreatedAt(round.createdAt)} · {confirmedPlayers.length} player
-            {confirmedPlayers.length === 1 ? "" : "s"}
+            {formatCreatedAt(round.createdAt)} · {round.players.length} player
+            {round.players.length === 1 ? "" : "s"}
           </p>
         </div>
+        <span
+          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
+            round.status === "completed"
+              ? "bg-stone-100 text-stone-600"
+              : "bg-emerald-50 text-emerald-700"
+          }`}
+        >
+          {round.status === "completed" ? "Completed" : "In progress"}
+        </span>
       </div>
 
-      <div className="mt-4 flex items-center gap-2">
-        <div className="flex -space-x-2">
-          {confirmedPlayers.slice(0, 4).map((p) => (
-            <div
-              key={p.id}
-              className="relative h-8 w-8 overflow-hidden rounded-full border-2 border-white"
-            >
-              <AvatarWithSash
-                imageUrl={p.imageUrl}
-                alt={p.fullName}
-                fill
-                fallback={p.fullName[0]?.toUpperCase() ?? "?"}
-              />
-            </div>
-          ))}
+      <div className="mt-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <div className="flex -space-x-2">
+            {round.players.slice(0, 4).map((p) => (
+              <div
+                key={p.id}
+                className="relative h-8 w-8 overflow-hidden rounded-full border-2 border-white"
+              >
+                <AvatarWithSash
+                  imageUrl={p.imageUrl}
+                  alt={p.fullName}
+                  fill
+                  fallback={p.fullName[0]?.toUpperCase() ?? "?"}
+                />
+              </div>
+            ))}
+          </div>
+          <p className="text-sm text-stone-600">
+            {round.players.map((p) => p.fullName).join(", ")}
+          </p>
         </div>
-        <p className="text-sm text-stone-600">
-          {confirmedPlayers.map((p) => p.fullName).join(", ")}
-        </p>
+        {round.players.some((p) => p.total > 0) ? (
+          <p className="text-sm font-medium text-stone-700">
+            Leader:{" "}
+            {[...round.players].sort((a, b) => (a.total || 999) - (b.total || 999))[0]?.fullName}
+          </p>
+        ) : null}
       </div>
     </Link>
   );
 }
 
 export default function PlayRoundPage() {
-  const [rounds, setRounds] = useState<PlayRound[]>([]);
+  const [rounds, setRounds] = useState<PlayRoundSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -107,7 +123,7 @@ export default function PlayRoundPage() {
         <div>
           <h1 className="font-serif text-2xl font-semibold text-stone-900">Play Round</h1>
           <p className="mt-1 text-sm text-stone-600">
-            Set up a round by choosing a course and who you&apos;re playing with.
+            Start a round, load the course scorecard, and enter scores hole by hole as you play.
           </p>
         </div>
         <Link
@@ -131,7 +147,7 @@ export default function PlayRoundPage() {
             href="/play-round/create"
             className="mt-4 inline-block text-sm font-medium text-emerald-600 hover:text-emerald-700"
           >
-            Create your first round →
+            Start your first round →
           </Link>
         </div>
       ) : null}
