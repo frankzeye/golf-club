@@ -71,6 +71,15 @@ function parTotal(sectionHoles: PlayRoundScorecardHole[]) {
   return sectionHoles.reduce((sum, h) => sum + h.par, 0);
 }
 
+function filterEntryPlayers(
+  players: PlayRoundScorecardPlayer[],
+  scorablePlayerIds?: string[]
+): PlayRoundScorecardPlayer[] {
+  if (scorablePlayerIds == null) return players;
+  const ids = new Set(scorablePlayerIds);
+  return players.filter((player) => ids.has(player.id));
+}
+
 function playerSectionTotal(
   player: PlayRoundScorecardPlayer,
   sectionHoles: PlayRoundScorecardHole[]
@@ -202,13 +211,11 @@ function ScoreEntryGrid({
   players,
   savingKey,
   saveScore,
-  scorablePlayerIds,
 }: {
   sections: ScorecardSection[];
   players: PlayRoundScorecardPlayer[];
   savingKey: string | null;
   saveScore: (playerId: string, hole: number, strokes: string) => void;
-  scorablePlayerIds?: string[];
 }) {
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
@@ -217,6 +224,14 @@ function ScoreEntryGrid({
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, []);
+
+  if (players.length === 0) {
+    return (
+      <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        No players in your foursome to score. Ask an admin to assign foursomes.
+      </p>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -279,38 +294,30 @@ function ScoreEntryGrid({
                       const value = player.scores[holeKey];
                       const cellKey = `${player.id}-${hole.hole}`;
                       const isSaving = savingKey === cellKey;
-                      const canEdit =
-                        !scorablePlayerIds || scorablePlayerIds.includes(player.id);
 
                       return (
                         <td key={hole.hole} className="px-1 py-2 text-center">
-                          {canEdit ? (
-                            <input
-                              type="number"
-                              min={1}
-                              max={maxStrokesForPar(hole.par)}
-                              inputMode="numeric"
-                              value={value ?? ""}
-                              placeholder="—"
-                              onChange={(e) => {
-                                const next = e.target.value;
-                                if (debounceRef.current) clearTimeout(debounceRef.current);
-                                debounceRef.current = setTimeout(() => {
-                                  saveScore(player.id, hole.hole, next);
-                                }, 350);
-                              }}
-                              className={`h-9 w-9 rounded-lg border text-center text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 ${
-                                isSaving
-                                  ? "border-emerald-300 bg-emerald-50"
-                                  : "border-stone-200 bg-white"
-                              }`}
-                              aria-label={`${player.fullName} hole ${hole.hole}`}
-                            />
-                          ) : (
-                            <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-stone-50 text-stone-400">
-                              {value ?? "—"}
-                            </span>
-                          )}
+                          <input
+                            type="number"
+                            min={1}
+                            max={maxStrokesForPar(hole.par)}
+                            inputMode="numeric"
+                            value={value ?? ""}
+                            placeholder="—"
+                            onChange={(e) => {
+                              const next = e.target.value;
+                              if (debounceRef.current) clearTimeout(debounceRef.current);
+                              debounceRef.current = setTimeout(() => {
+                                saveScore(player.id, hole.hole, next);
+                              }, 350);
+                            }}
+                            className={`h-9 w-9 rounded-lg border text-center text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 ${
+                              isSaving
+                                ? "border-emerald-300 bg-emerald-50"
+                                : "border-stone-200 bg-white"
+                            }`}
+                            aria-label={`${player.fullName} hole ${hole.hole}`}
+                          />
                           {value ? (
                             <p className="mt-0.5 text-[10px] text-stone-400">
                               {formatScoreToPar(value, hole.par)}
@@ -554,6 +561,10 @@ export function PlayRoundScorecard({
   );
 
   const sections = buildSections(holes);
+  const entryPlayers = useMemo(
+    () => filterEntryPlayers(players, scorablePlayerIds),
+    [players, scorablePlayerIds]
+  );
 
   if (readOnly) {
     return (
@@ -597,9 +608,8 @@ export function PlayRoundScorecard({
       {mode === "enter" ? (
         <ScoreEntryGrid
           sections={sections}
-          players={players}
+          players={entryPlayers}
           savingKey={savingKey}
-          scorablePlayerIds={scorablePlayerIds}
           saveScore={(playerId, hole, strokes) => void saveScore(playerId, hole, strokes)}
         />
       ) : mode === "scorecard" ? (

@@ -19,15 +19,13 @@ async function resolveScorablePlayerIds(
   viewerPlayer: { id: string; userId: string } | null,
   isTournamentRound: boolean
 ): Promise<string[]> {
-  if (isAdmin) {
-    return round.players.map((p) => p.id);
+  if (!isTournamentRound || !round.tournamentId) {
+    if (isAdmin) return round.players.map((p) => p.id);
+    if (!viewerPlayer) return [];
+    return [viewerPlayer.id];
   }
 
   if (!viewerPlayer) return [];
-
-  if (!isTournamentRound || !round.tournamentId) {
-    return [viewerPlayer.id];
-  }
 
   const membership = await prisma.tournamentFoursomeMember.findFirst({
     where: {
@@ -47,6 +45,26 @@ async function resolveScorablePlayerIds(
 
   const mateUserIds = new Set(membership.foursome.members.map((m) => m.userId));
   return round.players.filter((p) => mateUserIds.has(p.userId)).map((p) => p.id);
+}
+
+export async function getFoursomeMemberUserIds(
+  tournamentId: string,
+  userId: string
+): Promise<string[] | null> {
+  const membership = await prisma.tournamentFoursomeMember.findFirst({
+    where: {
+      userId,
+      foursome: { tournamentId },
+    },
+    include: {
+      foursome: {
+        include: { members: { select: { userId: true } } },
+      },
+    },
+  });
+
+  if (!membership) return null;
+  return membership.foursome.members.map((m) => m.userId);
 }
 
 export async function getPlayRoundAccess(
@@ -110,6 +128,6 @@ export function canSaveScoreForPlayer(
   access: PlayRoundAccess,
   playerId: string
 ): boolean {
-  if (access.canScoreAny) return true;
+  if (access.canScoreAny && !access.isTournamentRound) return true;
   return access.scorablePlayerIds.includes(playerId);
 }

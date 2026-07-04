@@ -6,7 +6,7 @@ import {
 } from "@/lib/course-scorecard";
 import { prisma } from "@/lib/db";
 import { loadPlayRoundScorecard } from "@/lib/load-play-round-scorecard";
-import { getPlayRoundAccess } from "@/lib/play-round-access";
+import { getPlayRoundAccess, getFoursomeMemberUserIds } from "@/lib/play-round-access";
 import {
   buildFlightLeaderboards,
   flightInclude,
@@ -228,8 +228,18 @@ export async function formatPlayRoundResponse(
 ) {
   const access = await getPlayRoundAccess(round.id, viewerId, userRole);
   const detail = await formatPlayRoundDetail(round, viewerId);
+
+  let foursomeMemberUserIds: string[] | null = null;
+  if (round.tournamentId) {
+    foursomeMemberUserIds = await getFoursomeMemberUserIds(round.tournamentId, viewerId);
+    if (!foursomeMemberUserIds) {
+      foursomeMemberUserIds = [viewerId];
+    }
+  }
+
   return {
     ...detail,
     scorablePlayerIds: access.scorablePlayerIds,
+    foursomeMemberUserIds,
   };
 }
