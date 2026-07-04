@@ -13,6 +13,7 @@ import {
   FLIGHTS_SCORING_FORMAT,
   formatTournamentFlights,
 } from "@/lib/tournament-flights";
+import { foursomeInclude, formatTournamentFoursomes } from "@/lib/tournament-foursomes";
 
 /**
  * GET /api/tournaments/[id] - Get a single tournament's details
@@ -54,6 +55,10 @@ export async function GET(
         include: flightInclude,
         orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
       },
+      foursomes: {
+        include: foursomeInclude,
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      },
       playRound: {
         select: {
           id: true,
@@ -89,6 +94,8 @@ export async function GET(
     t.scoringFormat === FLIGHTS_SCORING_FORMAT
       ? formatTournamentFlights(t.flights)
       : [];
+
+  const foursomes = formatTournamentFoursomes(t.foursomes);
 
   let flightLeaderboards: Awaited<ReturnType<typeof buildFlightLeaderboards>> = [];
   if (t.scoringFormat === FLIGHTS_SCORING_FORMAT && t.playRound && flights.length > 0) {
@@ -136,6 +143,7 @@ export async function GET(
       !!t.playRound &&
       t.playRound.status === "in_progress",
     flights,
+    foursomes,
     flightLeaderboards,
   });
 }

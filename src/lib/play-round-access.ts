@@ -5,7 +5,48 @@ export interface PlayRoundAccess {
   canScoreAny: boolean;
   canDelete: boolean;
   viewerPlayerId: string | null;
+  scorablePlayerIds: string[];
   isTournamentRound: boolean;
+}
+
+async function resolveScorablePlayerIds(
+  round: {
+    tournamentId: string | null;
+    players: Array<{ id: string; userId: string }>;
+  },
+  userId: string,
+  isAdmin: boolean,
+  viewerPlayer: { id: string; userId: string } | null,
+  isTournamentRound: boolean
+): Promise<string[]> {
+  if (isAdmin) {
+    return round.players.map((p) => p.id);
+  }
+
+  if (!viewerPlayer) return [];
+
+  if (!isTournamentRound || !round.tournamentId) {
+    return [viewerPlayer.id];
+  }
+
+  const membership = await prisma.tournamentFoursomeMember.findFirst({
+    where: {
+      userId,
+      foursome: { tournamentId: round.tournamentId },
+    },
+    include: {
+      foursome: {
+        include: { members: { select: { userId: true } } },
+      },
+    },
+  });
+
+  if (!membership) {
+    return [viewerPlayer.id];
+  }
+
+  const mateUserIds = new Set(membership.foursome.members.map((m) => m.userId));
+  return round.players.filter((p) => mateUserIds.has(p.userId)).map((p) => p.id);
 }
 
 export async function getPlayRoundAccess(
@@ -27,6 +68,7 @@ export async function getPlayRoundAccess(
       canScoreAny: false,
       canDelete: false,
       viewerPlayerId: null,
+      scorablePlayerIds: [],
       isTournamentRound: false,
     };
   }
@@ -34,6 +76,13 @@ export async function getPlayRoundAccess(
   const viewerPlayer = round.players.find((p) => p.userId === userId) ?? null;
   const isAdmin = userRole === "admin";
   const isTournamentRound = round.tournamentId != null;
+  const scorablePlayerIds = await resolveScorablePlayerIds(
+    round,
+    userId,
+    isAdmin,
+    viewerPlayer,
+    isTournamentRound
+  );
 
   if (isTournamentRound) {
     const isRegistered = viewerPlayer != null;
@@ -42,6 +91,7 @@ export async function getPlayRoundAccess(
       canScoreAny: isAdmin,
       canDelete: isAdmin,
       viewerPlayerId: viewerPlayer?.id ?? null,
+      scorablePlayerIds,
       isTournamentRound: true,
     };
   }
@@ -51,6 +101,7 @@ export async function getPlayRoundAccess(
     canScoreAny: isAdmin,
     canDelete: isAdmin,
     viewerPlayerId: viewerPlayer?.id ?? null,
+    scorablePlayerIds,
     isTournamentRound: false,
   };
 }
@@ -60,5 +111,5 @@ export function canSaveScoreForPlayer(
   playerId: string
 ): boolean {
   if (access.canScoreAny) return true;
-  return access.viewerPlayerId === playerId;
+  return access.scorablePlayerIds.includes(playerId);
 }

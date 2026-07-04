@@ -47,6 +47,7 @@ model User {
   createdAt     DateTime @default(now())
   tournamentRegistrations TournamentRegistration[]
   tournamentFlightMembers TournamentFlightMember[]
+  tournamentFoursomeMembers TournamentFoursomeMember[]
   comments      Comment[]
   surveySelections SurveyDateSelection[]
   surveysCreated   Survey[] @relation("SurveyCreator")
@@ -161,6 +162,7 @@ model Tournament {
   comments       Comment[]
   playRound      PlayRound?
   flights        TournamentFlight[]
+  foursomes      TournamentFoursome[]
 }
 
 model TournamentFlight {
@@ -184,6 +186,28 @@ model TournamentFlightMember {
   user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([flightId, userId])
+  @@index([userId])
+}
+
+model TournamentFoursome {
+  id           String   @id @default(cuid())
+  tournamentId String
+  name         String
+  sortOrder    Int      @default(0)
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  members      TournamentFoursomeMember[]
+
+  @@index([tournamentId])
+}
+
+model TournamentFoursomeMember {
+  id         String @id @default(cuid())
+  foursomeId String
+  userId     String
+  foursome   TournamentFoursome @relation(fields: [foursomeId], references: [id], onDelete: Cascade)
+  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([foursomeId, userId])
   @@index([userId])
 }
 

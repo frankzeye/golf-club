@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
-  formatPlayRoundDetail,
+  formatPlayRoundResponse,
   loadPlayRoundScorecard,
   playRoundInclude,
 } from "@/lib/play-round-format";
@@ -41,7 +41,9 @@ export async function POST(
       if (!full) {
         return NextResponse.json({ error: "Play round not found" }, { status: 404 });
       }
-      return NextResponse.json(await formatPlayRoundDetail(full, session!.user!.id));
+      return NextResponse.json(
+        await formatPlayRoundResponse(full, session!.user!.id, session!.user!.role ?? "admin")
+      );
     }
 
     const tournamentWithRegs = await prisma.tournament.findUnique({
@@ -108,7 +110,9 @@ export async function POST(
       include: playRoundInclude,
     });
 
-    return NextResponse.json(await formatPlayRoundDetail(round, session!.user!.id));
+    return NextResponse.json(
+      await formatPlayRoundResponse(round, session!.user!.id, session!.user!.role ?? "admin")
+    );
   } catch (err) {
     console.error("POST /api/tournaments/[id]/start failed:", err);
     return NextResponse.json({ error: "Failed to start tournament scoring" }, { status: 500 });

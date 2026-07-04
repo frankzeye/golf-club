@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { AdminPageShell } from "@/components/AdminPageShell";
 import {
   PlayRoundScorecard,
+  type PlayRoundFlightLeaderboard,
   type PlayRoundScorecardHole,
   type PlayRoundScorecardPlayer,
 } from "@/components/PlayRoundScorecard";
@@ -19,6 +20,8 @@ interface PlayRoundDetail {
   createdAt: string;
   players: PlayRoundScorecardPlayer[];
   scorecard: PlayRoundScorecardHole[];
+  flightLeaderboards?: PlayRoundFlightLeaderboard[];
+  scorablePlayerIds?: string[];
 }
 
 export default function PlayRoundDetailPage() {
@@ -130,6 +133,8 @@ export default function PlayRoundDetailPage() {
             holes={round.scorecard}
             players={round.players}
             status={round.status}
+            flightLeaderboards={round.flightLeaderboards}
+            scorablePlayerIds={round.scorablePlayerIds}
             onRoundUpdate={(updated) => setRound(updated as PlayRoundDetail)}
           />
         </div>

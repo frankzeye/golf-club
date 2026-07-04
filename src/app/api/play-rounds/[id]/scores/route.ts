@@ -3,7 +3,7 @@ import { getAuthSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { maxStrokesForPar, parsePlayerScores } from "@/lib/course-scorecard";
 import {
-  formatPlayRoundDetail,
+  formatPlayRoundResponse,
   loadPlayRoundScorecard,
   playRoundInclude,
 } from "@/lib/play-round-format";
@@ -56,7 +56,14 @@ export async function PATCH(
     }
 
     if (!canSaveScoreForPlayer(access, playerId)) {
-      return NextResponse.json({ error: "You can only enter your own scores" }, { status: 403 });
+      return NextResponse.json(
+        {
+          error: access.isTournamentRound
+            ? "You can only enter scores for players in your foursome"
+            : "You can only enter your own scores",
+        },
+        { status: 403 }
+      );
     }
 
     const player = await prisma.playRoundPlayer.findFirst({
@@ -98,7 +105,9 @@ export async function PATCH(
       return NextResponse.json({ error: "Play round not found" }, { status: 404 });
     }
 
-    return NextResponse.json(await formatPlayRoundDetail(updated, session.user.id));
+    return NextResponse.json(
+      await formatPlayRoundResponse(updated, session.user.id, session.user.role ?? "member")
+    );
   } catch (err) {
     console.error("PATCH /api/play-rounds/[id]/scores failed:", err);
     return NextResponse.json({ error: "Failed to save score" }, { status: 500 });

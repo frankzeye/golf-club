@@ -8,6 +8,13 @@ import {
 } from "@/lib/course-scorecard";
 import { fetchAndCacheCourseDetails } from "@/lib/golf-course";
 import { prisma } from "@/lib/db";
+import { getPlayRoundAccess } from "@/lib/play-round-access";
+import {
+  buildFlightLeaderboards,
+  flightInclude,
+  FLIGHTS_SCORING_FORMAT,
+  formatTournamentFlights,
+} from "@/lib/tournament-flights";
 
 const playerUserSelect = {
   id: true,
@@ -26,7 +33,17 @@ export const playRoundInclude = {
     orderBy: { id: "asc" as const },
   },
   createdBy: { select: playerUserSelect },
-  tournament: { select: { id: true, slug: true, name: true } },
+  tournament: {
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      scoringFormat: true,
+      flights: {
+        include: flightInclude,
+      },
+    },
+  },
 } as const;
 
 type PlayRoundWithRelations = Awaited<
@@ -59,6 +76,25 @@ type PlayRoundWithRelations = Awaited<
     id: string;
     slug: string | null;
     name: string;
+    scoringFormat: string;
+    flights: Array<{
+      id: string;
+      name: string;
+      sortOrder: number;
+      minHandicap: number | null;
+      maxHandicap: number | null;
+      members: Array<{
+        user: {
+          id: string;
+          slug: string | null;
+          firstName: string;
+          lastName: string;
+          imageUrl: string | null;
+          handicapIndex: number | null;
+          scgaOfficial: boolean;
+        };
+      }>;
+    }>;
   } | null;
 };
 
@@ -140,6 +176,21 @@ export async function formatPlayRoundDetail(
     ? round.players.find((p) => p.userId === viewerId)
     : undefined;
 
+  let flightLeaderboards: Awaited<ReturnType<typeof buildFlightLeaderboards>> = [];
+  if (
+    round.tournament?.scoringFormat === FLIGHTS_SCORING_FORMAT &&
+    round.tournament.flights.length > 0
+  ) {
+    flightLeaderboards = await buildFlightLeaderboards(
+      formatTournamentFlights(round.tournament.flights),
+      {
+        courseId: round.courseId,
+        holeCount: round.holeCount,
+        players: round.players,
+      }
+    );
+  }
+
   return {
     id: round.id,
     slug: round.slug,
@@ -147,6 +198,7 @@ export async function formatPlayRoundDetail(
     courseId: round.courseId,
     tournamentId: round.tournamentId ?? null,
     tournamentName: round.tournament?.name ?? null,
+    tournamentScoringFormat: round.tournament?.scoringFormat ?? null,
     holeCount: round.holeCount,
     status: round.status,
     createdAt: round.createdAt.toISOString(),
@@ -157,6 +209,7 @@ export async function formatPlayRoundDetail(
     creator: formatUser(round.createdBy),
     players,
     scorecard,
+    flightLeaderboards,
   };
 }
 
@@ -189,5 +242,18 @@ export function formatPlayRoundSummary(round: PlayRoundWithRelations) {
     createdAt: round.createdAt.toISOString(),
     updatedAt: round.updatedAt.toISOString(),
     players,
+  };
+}
+
+export async function formatPlayRoundResponse(
+  round: PlayRoundWithRelations,
+  viewerId: string,
+  userRole: string
+) {
+  const access = await getPlayRoundAccess(round.id, viewerId, userRole);
+  const detail = await formatPlayRoundDetail(round, viewerId);
+  return {
+    ...detail,
+    scorablePlayerIds: access.scorablePlayerIds,
   };
 }

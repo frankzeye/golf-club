@@ -26,11 +26,30 @@ export interface PlayRoundScorecardPlayer {
   holesPlayed: number;
 }
 
+export interface PlayRoundFlightLeaderboard {
+  flightId: string;
+  flightName: string;
+  minHandicap: number | null;
+  maxHandicap: number | null;
+  rows: Array<{
+    rank: number;
+    userId: string;
+    fullName: string;
+    imageUrl: string | null;
+    handicapIndex: number | null;
+    total: number;
+    holesPlayed: number;
+    toPar: number | null;
+  }>;
+}
+
 interface PlayRoundScorecardProps {
   roundId: string;
   holes: PlayRoundScorecardHole[];
   players: PlayRoundScorecardPlayer[];
   status: string;
+  flightLeaderboards?: PlayRoundFlightLeaderboard[];
+  scorablePlayerIds?: string[];
   onRoundUpdate: (round: unknown) => void;
 }
 
@@ -183,11 +202,13 @@ function ScoreEntryGrid({
   players,
   savingKey,
   saveScore,
+  scorablePlayerIds,
 }: {
   sections: ScorecardSection[];
   players: PlayRoundScorecardPlayer[];
   savingKey: string | null;
   saveScore: (playerId: string, hole: number, strokes: string) => void;
+  scorablePlayerIds?: string[];
 }) {
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
@@ -258,30 +279,38 @@ function ScoreEntryGrid({
                       const value = player.scores[holeKey];
                       const cellKey = `${player.id}-${hole.hole}`;
                       const isSaving = savingKey === cellKey;
+                      const canEdit =
+                        !scorablePlayerIds || scorablePlayerIds.includes(player.id);
 
                       return (
                         <td key={hole.hole} className="px-1 py-2 text-center">
-                          <input
-                            type="number"
-                            min={1}
-                            max={maxStrokesForPar(hole.par)}
-                            inputMode="numeric"
-                            value={value ?? ""}
-                            placeholder="—"
-                            onChange={(e) => {
-                              const next = e.target.value;
-                              if (debounceRef.current) clearTimeout(debounceRef.current);
-                              debounceRef.current = setTimeout(() => {
-                                saveScore(player.id, hole.hole, next);
-                              }, 350);
-                            }}
-                            className={`h-9 w-9 rounded-lg border text-center text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 ${
-                              isSaving
-                                ? "border-emerald-300 bg-emerald-50"
-                                : "border-stone-200 bg-white"
-                            }`}
-                            aria-label={`${player.fullName} hole ${hole.hole}`}
-                          />
+                          {canEdit ? (
+                            <input
+                              type="number"
+                              min={1}
+                              max={maxStrokesForPar(hole.par)}
+                              inputMode="numeric"
+                              value={value ?? ""}
+                              placeholder="—"
+                              onChange={(e) => {
+                                const next = e.target.value;
+                                if (debounceRef.current) clearTimeout(debounceRef.current);
+                                debounceRef.current = setTimeout(() => {
+                                  saveScore(player.id, hole.hole, next);
+                                }, 350);
+                              }}
+                              className={`h-9 w-9 rounded-lg border text-center text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 ${
+                                isSaving
+                                  ? "border-emerald-300 bg-emerald-50"
+                                  : "border-stone-200 bg-white"
+                              }`}
+                              aria-label={`${player.fullName} hole ${hole.hole}`}
+                            />
+                          ) : (
+                            <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-stone-50 text-stone-400">
+                              {value ?? "—"}
+                            </span>
+                          )}
                           {value ? (
                             <p className="mt-0.5 text-[10px] text-stone-400">
                               {formatScoreToPar(value, hole.par)}
@@ -349,46 +378,126 @@ function Leaderboard({
       {rows.map((row) => {
         const isLeader = row.rank === 1 && row.toPar != null;
         return (
-          <div
+          <LeaderboardRow
             key={row.player.id}
-            className={`flex items-center gap-4 rounded-xl border px-4 py-3 shadow-sm ${
-              isLeader
-                ? "border-emerald-200 bg-emerald-50"
-                : "border-stone-200 bg-white"
-            }`}
-          >
-            <span
-              className={`w-6 text-center text-lg font-bold ${
-                isLeader ? "text-emerald-700" : "text-stone-400"
-              }`}
-            >
-              {row.toPar != null ? row.rank : "—"}
-            </span>
-            <AvatarWithSash
-              imageUrl={row.player.imageUrl}
-              alt={row.player.fullName}
-              size="sm"
-              fallback={row.player.fullName[0]?.toUpperCase() ?? "?"}
-            />
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-medium text-stone-900">{row.player.fullName}</p>
-              <p className="text-xs text-stone-500">
-                {row.player.handicapIndex != null ? `HCP ${row.player.handicapIndex}` : "No HCP"}
-                {row.holesPlayed > 0
-                  ? ` · ${row.total} strokes · ${row.holesPlayed}/${holes.length} holes`
-                  : " · No scores yet"}
-              </p>
-            </div>
-            <span
-              className={`min-w-[2.5rem] text-right text-2xl font-bold ${
-                isLeader ? "text-emerald-700" : "text-stone-900"
-              }`}
-            >
-              {row.toPar != null ? formatRelativeToPar(row.toPar) : "—"}
-            </span>
-          </div>
+            rank={row.toPar != null ? row.rank : null}
+            fullName={row.player.fullName}
+            imageUrl={row.player.imageUrl}
+            handicapIndex={row.player.handicapIndex}
+            total={row.total}
+            holesPlayed={row.holesPlayed}
+            holeCount={holes.length}
+            toPar={row.toPar}
+            isLeader={isLeader}
+          />
         );
       })}
+    </div>
+  );
+}
+
+function LeaderboardRow({
+  rank,
+  fullName,
+  imageUrl,
+  handicapIndex,
+  total,
+  holesPlayed,
+  holeCount,
+  toPar,
+  isLeader,
+}: {
+  rank: number | null;
+  fullName: string;
+  imageUrl: string | null;
+  handicapIndex: number | null;
+  total: number;
+  holesPlayed: number;
+  holeCount: number;
+  toPar: number | null;
+  isLeader: boolean;
+}) {
+  return (
+    <div
+      className={`flex items-center gap-4 rounded-xl border px-4 py-3 shadow-sm ${
+        isLeader ? "border-emerald-200 bg-emerald-50" : "border-stone-200 bg-white"
+      }`}
+    >
+      <span
+        className={`w-6 text-center text-lg font-bold ${
+          isLeader ? "text-emerald-700" : "text-stone-400"
+        }`}
+      >
+        {rank ?? "—"}
+      </span>
+      <AvatarWithSash
+        imageUrl={imageUrl}
+        alt={fullName}
+        size="sm"
+        fallback={fullName[0]?.toUpperCase() ?? "?"}
+      />
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-medium text-stone-900">{fullName}</p>
+        <p className="text-xs text-stone-500">
+          {handicapIndex != null ? `HCP ${handicapIndex}` : "No HCP"}
+          {holesPlayed > 0
+            ? ` · ${total} strokes · ${holesPlayed}/${holeCount} holes`
+            : " · No scores yet"}
+        </p>
+      </div>
+      <span
+        className={`min-w-[2.5rem] text-right text-2xl font-bold ${
+          isLeader ? "text-emerald-700" : "text-stone-900"
+        }`}
+      >
+        {toPar != null ? formatRelativeToPar(toPar) : "—"}
+      </span>
+    </div>
+  );
+}
+
+function FlightLeaderboards({
+  flightLeaderboards,
+  holes,
+}: {
+  flightLeaderboards: PlayRoundFlightLeaderboard[];
+  holes: PlayRoundScorecardHole[];
+}) {
+  return (
+    <div className="space-y-6">
+      {flightLeaderboards.map((flight) => (
+        <div
+          key={flight.flightId}
+          className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm"
+        >
+          <div className="border-b border-stone-200 bg-stone-50 px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-stone-900">{flight.flightName}</h3>
+              {flight.minHandicap != null && flight.maxHandicap != null ? (
+                <span className="text-xs text-stone-500">
+                  HCP {flight.minHandicap}–{flight.maxHandicap}
+                </span>
+              ) : null}
+            </div>
+          </div>
+          <div className="space-y-3 p-3">
+            {flight.rows.map((row) => (
+              <LeaderboardRow
+                key={row.userId}
+                rank={row.toPar != null ? row.rank : null}
+                fullName={row.fullName}
+                imageUrl={row.imageUrl}
+                handicapIndex={row.handicapIndex}
+                total={row.total}
+                holesPlayed={row.holesPlayed}
+                holeCount={holes.length}
+                toPar={row.toPar}
+                isLeader={row.rank === 1 && row.toPar != null}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -398,12 +507,21 @@ export function PlayRoundScorecard({
   holes,
   players,
   status,
+  flightLeaderboards = [],
+  scorablePlayerIds,
   onRoundUpdate,
 }: PlayRoundScorecardProps) {
   const readOnly = status === "completed";
   const [mode, setMode] = useState<PlayRoundMode>(readOnly ? "scorecard" : "enter");
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const useFlightLeaderboards = flightLeaderboards.length > 0;
+
+  const leaderboard = useFlightLeaderboards ? (
+    <FlightLeaderboards flightLeaderboards={flightLeaderboards} holes={holes} />
+  ) : (
+    <Leaderboard players={players} holes={holes} />
+  );
 
   const saveScore = useCallback(
     async (playerId: string, hole: number, strokes: string) => {
@@ -449,7 +567,7 @@ export function PlayRoundScorecard({
           ]}
         />
         {mode === "leaderboard" ? (
-          <Leaderboard players={players} holes={holes} />
+          leaderboard
         ) : (
           <ScorecardGrid sections={sections} players={players} />
         )}
@@ -481,12 +599,13 @@ export function PlayRoundScorecard({
           sections={sections}
           players={players}
           savingKey={savingKey}
+          scorablePlayerIds={scorablePlayerIds}
           saveScore={(playerId, hole, strokes) => void saveScore(playerId, hole, strokes)}
         />
       ) : mode === "scorecard" ? (
         <ScorecardGrid sections={sections} players={players} />
       ) : (
-        <Leaderboard players={players} holes={holes} />
+        leaderboard
       )}
 
       <PlayerTotals players={players} holeCount={holes.length} />

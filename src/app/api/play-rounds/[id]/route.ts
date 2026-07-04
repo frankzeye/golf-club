@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { formatPlayRoundDetail, playRoundInclude } from "@/lib/play-round-format";
+import { formatPlayRoundResponse, playRoundInclude } from "@/lib/play-round-format";
 import { getPlayRoundAccess } from "@/lib/play-round-access";
 import { findPlayRoundByIdOrSlug } from "@/lib/play-round-slug";
 
@@ -42,7 +42,9 @@ export async function GET(
       return NextResponse.json({ error: "Play round not found" }, { status: 404 });
     }
 
-    return NextResponse.json(await formatPlayRoundDetail(full, session.user.id));
+    return NextResponse.json(
+      await formatPlayRoundResponse(full, session.user.id, session.user.role ?? "member")
+    );
   } catch (err) {
     console.error("GET /api/play-rounds/[id] failed:", err);
     return NextResponse.json({ error: "Failed to load play round" }, { status: 500 });
@@ -80,7 +82,9 @@ export async function PATCH(
       include: playRoundInclude,
     });
 
-    return NextResponse.json(await formatPlayRoundDetail(updated, session.user.id));
+    return NextResponse.json(
+      await formatPlayRoundResponse(updated, session.user.id, session.user.role ?? "member")
+    );
   } catch (err) {
     console.error("PATCH /api/play-rounds/[id] failed:", err);
     return NextResponse.json({ error: "Failed to update play round" }, { status: 500 });

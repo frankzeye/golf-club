@@ -16,6 +16,10 @@ import {
   TournamentFlightsManager,
   type TournamentFlightData,
 } from "@/components/TournamentFlightsManager";
+import {
+  TournamentFoursomesManager,
+  type TournamentFoursomeData,
+} from "@/components/TournamentFoursomesManager";
 
 interface CommentUser {
   id: string;
@@ -114,6 +118,7 @@ interface TournamentDetail {
   myPaymentStatus: string | null;
   registeredUsers: RegisteredUser[];
   flights?: TournamentFlightData[];
+  foursomes?: TournamentFoursomeData[];
   flightLeaderboards?: Array<{
     flightId: string;
     flightName: string;
@@ -1287,6 +1292,17 @@ export default function TournamentDetailPage() {
           {error && (
             <p className="mt-4 text-sm text-red-600">{error}</p>
           )}
+
+          {isAdmin && !isEditing ? (
+            <TournamentFoursomesManager
+              tournamentId={tournament.slug ?? tournament.id}
+              registeredUsers={tournament.registeredUsers}
+              initialFoursomes={tournament.foursomes ?? []}
+              onFoursomesChange={(foursomes) =>
+                setTournament((prev) => (prev ? { ...prev, foursomes } : prev))
+              }
+            />
+          ) : null}
 
           {isAdmin && tournament.scoringFormat === FLIGHTS_SCORING_FORMAT && !isEditing ? (
             <TournamentFlightsManager
