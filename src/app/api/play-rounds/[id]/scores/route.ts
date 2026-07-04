@@ -1,20 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth";
+import { getAuthSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { maxStrokesForPar, parsePlayerScores } from "@/lib/course-scorecard";
-import { formatPlayRoundDetail, loadPlayRoundScorecard, playRoundInclude } from "@/lib/play-round-format";
+import {
+  formatPlayRoundDetail,
+  loadPlayRoundScorecard,
+  playRoundInclude,
+} from "@/lib/play-round-format";
+import { canSaveScoreForPlayer, getPlayRoundAccess } from "@/lib/play-round-access";
 import { findPlayRoundByIdOrSlug } from "@/lib/play-round-slug";
 
 /**
- * PATCH /api/play-rounds/[id]/scores — Save strokes for a hole (admin only).
+ * PATCH /api/play-rounds/[id]/scores — Save strokes for a hole.
+ * Admins can score any player; tournament members can score themselves only.
  */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { error, session } = await requireAdmin(request);
-  if (error) {
-    return NextResponse.json(error.json, { status: error.status });
+  const session = await getAuthSession(request);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
@@ -22,6 +28,19 @@ export async function PATCH(
     const round = await findPlayRoundByIdOrSlug(id);
     if (!round) {
       return NextResponse.json({ error: "Play round not found" }, { status: 404 });
+    }
+
+    if (round.status === "completed") {
+      return NextResponse.json({ error: "This round is completed" }, { status: 400 });
+    }
+
+    const access = await getPlayRoundAccess(
+      round.id,
+      session.user.id,
+      session.user.role ?? "member"
+    );
+    if (!access.canView) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const body = await request.json();
@@ -34,6 +53,10 @@ export async function PATCH(
     }
     if (!Number.isInteger(hole) || hole < 1 || hole > round.holeCount) {
       return NextResponse.json({ error: "Invalid hole number" }, { status: 400 });
+    }
+
+    if (!canSaveScoreForPlayer(access, playerId)) {
+      return NextResponse.json({ error: "You can only enter your own scores" }, { status: 403 });
     }
 
     const player = await prisma.playRoundPlayer.findFirst({
@@ -75,7 +98,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Play round not found" }, { status: 404 });
     }
 
-    return NextResponse.json(await formatPlayRoundDetail(updated, session!.user!.id));
+    return NextResponse.json(await formatPlayRoundDetail(updated, session.user.id));
   } catch (err) {
     console.error("PATCH /api/play-rounds/[id]/scores failed:", err);
     return NextResponse.json({ error: "Failed to save score" }, { status: 500 });

@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const rounds = await prisma.playRound.findMany({
+      where: { tournamentId: null },
       orderBy: [{ createdAt: "desc" }],
       include: playRoundInclude,
     });

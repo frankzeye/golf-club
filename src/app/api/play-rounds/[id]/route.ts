@@ -1,19 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth";
+import { getAuthSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { formatPlayRoundDetail, playRoundInclude } from "@/lib/play-round-format";
+import { getPlayRoundAccess } from "@/lib/play-round-access";
 import { findPlayRoundByIdOrSlug } from "@/lib/play-round-slug";
 
 /**
- * GET /api/play-rounds/[id] — Play round with scorecard and scores (admin only).
+ * GET /api/play-rounds/[id] — Play round with scorecard and scores.
+ * Admins always; tournament rounds also open to registered players.
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { error, session } = await requireAdmin(request);
-  if (error) {
-    return NextResponse.json(error.json, { status: error.status });
+  const session = await getAuthSession(request);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
@@ -21,6 +23,15 @@ export async function GET(
     const round = await findPlayRoundByIdOrSlug(id);
     if (!round) {
       return NextResponse.json({ error: "Play round not found" }, { status: 404 });
+    }
+
+    const access = await getPlayRoundAccess(
+      round.id,
+      session.user.id,
+      session.user.role ?? "member"
+    );
+    if (!access.canView) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const full = await prisma.playRound.findUnique({
@@ -31,7 +42,7 @@ export async function GET(
       return NextResponse.json({ error: "Play round not found" }, { status: 404 });
     }
 
-    return NextResponse.json(await formatPlayRoundDetail(full, session!.user!.id));
+    return NextResponse.json(await formatPlayRoundDetail(full, session.user.id));
   } catch (err) {
     console.error("GET /api/play-rounds/[id] failed:", err);
     return NextResponse.json({ error: "Failed to load play round" }, { status: 500 });
@@ -45,9 +56,9 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { error, session } = await requireAdmin(request);
-  if (error) {
-    return NextResponse.json(error.json, { status: error.status });
+  const session = await getAuthSession(request);
+  if (!session?.user?.id || session.user.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   try {
@@ -69,7 +80,7 @@ export async function PATCH(
       include: playRoundInclude,
     });
 
-    return NextResponse.json(await formatPlayRoundDetail(updated, session!.user!.id));
+    return NextResponse.json(await formatPlayRoundDetail(updated, session.user.id));
   } catch (err) {
     console.error("PATCH /api/play-rounds/[id] failed:", err);
     return NextResponse.json({ error: "Failed to update play round" }, { status: 500 });
@@ -83,9 +94,9 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { error } = await requireAdmin(request);
-  if (error) {
-    return NextResponse.json(error.json, { status: error.status });
+  const session = await getAuthSession(request);
+  if (!session?.user?.id || session.user.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   try {

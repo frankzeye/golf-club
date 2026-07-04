@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthSession, requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { memberSlug } from "@/lib/member-slug";
 import { findTournamentByIdOrSlug } from "@/lib/tournament-resolve";
 import { tournamentSlug, findUniqueSlug } from "@/lib/tournament-slug";
-import { memberSlug } from "@/lib/member-slug";
 import { parseStartTime } from "@/lib/tournament-time";
 import { resolveCourseSelection } from "@/lib/golf-course";
 
@@ -40,6 +40,13 @@ export async function GET(
               scgaOfficial: true,
             },
           },
+        },
+      },
+      playRound: {
+        select: {
+          id: true,
+          slug: true,
+          status: true,
         },
       },
     },
@@ -88,6 +95,17 @@ export async function GET(
     isRegistered: !!myRegistration,
     myPaymentStatus: myRegistration?.paymentStatus ?? null,
     registeredUsers,
+    playRound: t.playRound
+      ? {
+          id: t.playRound.id,
+          slug: t.playRound.slug,
+          status: t.playRound.status,
+        }
+      : null,
+    canEnterScores:
+      !!myRegistration &&
+      !!t.playRound &&
+      t.playRound.status === "in_progress",
   });
 }
 

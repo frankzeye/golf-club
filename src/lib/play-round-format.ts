@@ -26,11 +26,13 @@ export const playRoundInclude = {
     orderBy: { id: "asc" as const },
   },
   createdBy: { select: playerUserSelect },
+  tournament: { select: { id: true, slug: true, name: true } },
 } as const;
 
 type PlayRoundWithRelations = Awaited<
   ReturnType<typeof prisma.playRound.findMany>
 >[0] & {
+  tournamentId?: string | null;
   players: Array<{
     id: string;
     userId: string;
@@ -53,6 +55,11 @@ type PlayRoundWithRelations = Awaited<
     imageUrl: string | null;
     scgaOfficial: boolean;
   };
+  tournament?: {
+    id: string;
+    slug: string | null;
+    name: string;
+  } | null;
 };
 
 function formatUser(user: PlayRoundWithRelations["createdBy"]) {
@@ -129,16 +136,24 @@ export async function formatPlayRoundDetail(
     };
   });
 
+  const viewerPlayer = viewerId
+    ? round.players.find((p) => p.userId === viewerId)
+    : undefined;
+
   return {
     id: round.id,
     slug: round.slug,
     course: round.course,
     courseId: round.courseId,
+    tournamentId: round.tournamentId ?? null,
+    tournamentName: round.tournament?.name ?? null,
     holeCount: round.holeCount,
     status: round.status,
     createdAt: round.createdAt.toISOString(),
     updatedAt: round.updatedAt.toISOString(),
     isCreator: viewerId === round.createdById,
+    isTournamentRound: round.tournamentId != null,
+    viewerPlayerId: viewerPlayer?.id ?? null,
     creator: formatUser(round.createdBy),
     players,
     scorecard,

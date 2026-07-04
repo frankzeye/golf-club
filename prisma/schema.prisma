@@ -158,6 +158,7 @@ model Tournament {
   createdAt      DateTime @default(now())
   registrations  TournamentRegistration[]
   comments       Comment[]
+  playRound      PlayRound?
 }
 
 model TournamentRegistration {
@@ -209,6 +210,8 @@ model PlayRound {
   course      String
   courseId    String?
   courseRef   GolfCourse? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  tournamentId String? @unique
+  tournament  Tournament? @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
   holeCount   Int      @default(18)
   status      String   @default("in_progress") // in_progress | completed
   createdById String

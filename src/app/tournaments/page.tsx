@@ -6,22 +6,8 @@ import Link from "next/link";
 import { Header } from "@/components/Header";
 import { CourseAutocomplete } from "@/components/CourseAutocomplete";
 import { formatStartTime } from "@/lib/tournament-time";
+import { TOURNAMENT_SCORING_FORMATS } from "@/lib/tournament-scoring-formats";
 import { AvatarWithSash } from "@/components/AvatarWithSash";
-
-const SCORING_FORMATS = [
-  "Stroke Play",
-  "Stableford",
-  "Best Ball",
-  "Scramble",
-  "Match Play",
-  "Shamble",
-  "Chapman",
-  "Four Ball",
-  "Modified Stableford",
-  "Pinehurst (Chapman)",
-  "Alternate Shot",
-  "Other",
-];
 
 interface RegisteredUser {
   id: string;
@@ -342,7 +328,7 @@ export default function TournamentsPage() {
                   className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 >
                   <option value="">Select format</option>
-                  {SCORING_FORMATS.map((f) => (
+                  {TOURNAMENT_SCORING_FORMATS.map((f) => (
                     <option key={f} value={f}>
                       {f}
                     </option>
