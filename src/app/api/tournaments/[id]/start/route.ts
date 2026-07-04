@@ -8,6 +8,7 @@ import {
 } from "@/lib/play-round-format";
 import { findUniquePlayRoundSlug } from "@/lib/play-round-slug";
 import { findTournamentByIdOrSlug } from "@/lib/tournament-resolve";
+import { resolveRegistrationHandicapIndex } from "@/lib/tournament-registration";
 
 /**
  * POST /api/tournaments/[id]/start — Start tournament scoring (admin only).
@@ -103,7 +104,10 @@ export async function POST(
           create: tournamentWithRegs.registrations.map((reg) => ({
             userId: reg.userId,
             scores: {},
-            handicapIndex: reg.user.handicapIndex,
+            handicapIndex: resolveRegistrationHandicapIndex(
+              reg.handicapIndex,
+              reg.user.handicapIndex
+            ),
           })),
         },
       },

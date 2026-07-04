@@ -8,6 +8,7 @@ import {
   formatTournamentFlights,
 } from "@/lib/tournament-flights";
 import { findTournamentByIdOrSlug } from "@/lib/tournament-resolve";
+import { resolveRegistrationHandicapIndex } from "@/lib/tournament-registration";
 
 /**
  * POST /api/tournaments/[id]/flights/auto-assign — Split registered players by handicap (admin only).
@@ -58,7 +59,10 @@ export async function POST(
     const assigned = autoAssignFlightsByHandicap(
       registrations.map((r) => ({
         userId: r.userId,
-        handicapIndex: r.user.handicapIndex,
+        handicapIndex: resolveRegistrationHandicapIndex(
+          r.handicapIndex,
+          r.user.handicapIndex
+        ),
       })),
       flightCount
     );

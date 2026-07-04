@@ -216,6 +216,7 @@ model TournamentRegistration {
   tournamentId  String
   userId        String
   paymentStatus String   @default("unpaid")  // "unpaid" | "pending" | "confirmed"
+  handicapIndex Float?
   createdAt     DateTime @default(now())
   tournament    Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -34,7 +34,10 @@ export async function POST(
     return NextResponse.json({ error: "userId is required" }, { status: 400 });
   }
 
-  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { handicapIndex: true },
+  });
   if (!user) {
     return NextResponse.json({ error: "Member not found" }, { status: 404 });
   }
@@ -65,6 +68,7 @@ export async function POST(
         tournamentId: tournamentWithCount.id,
         userId,
         paymentStatus,
+        handicapIndex: user.handicapIndex,
       },
     });
     return NextResponse.json({ ok: true, registrationId: registration.id });

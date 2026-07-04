@@ -3,6 +3,7 @@ import { getAuthSession, requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { memberSlug } from "@/lib/member-slug";
 import { findTournamentByIdOrSlug } from "@/lib/tournament-resolve";
+import { resolveRegistrationHandicapIndex } from "@/lib/tournament-registration";
 import { tournamentSlug, findUniqueSlug } from "@/lib/tournament-slug";
 import { parseStartTime } from "@/lib/tournament-time";
 import { resolveCourseSelection } from "@/lib/golf-course";
@@ -86,7 +87,7 @@ export async function GET(
     fullName: [r.user.firstName, r.user.lastName].filter(Boolean).join(" ") || "—",
     imageUrl: r.user.imageUrl,
     scgaOfficial: r.user.scgaOfficial ?? false,
-    handicapIndex: r.user.handicapIndex,
+    handicapIndex: resolveRegistrationHandicapIndex(r.handicapIndex, r.user.handicapIndex),
     paymentStatus: r.paymentStatus,
   }));
 

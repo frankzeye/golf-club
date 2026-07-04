@@ -190,6 +190,8 @@ export default function TournamentDetailPage() {
   const [prizeResults, setPrizeResults] = useState<string[]>([]);
   const [isSavingWinners, setIsSavingWinners] = useState(false);
   const [clubMembers, setClubMembers] = useState<ClubMember[]>([]);
+  const [handicapDrafts, setHandicapDrafts] = useState<Record<string, string>>({});
+  const [savingHandicapId, setSavingHandicapId] = useState<string | null>(null);
 
   const loadComments = useCallback(() => {
     if (!id) return;
@@ -213,6 +215,16 @@ export default function TournamentDetailPage() {
       .then((data) => {
         setError("");
         setTournament(data);
+        setHandicapDrafts(
+          Object.fromEntries(
+            (data.registeredUsers ?? []).map(
+              (user: RegisteredUser) => [
+                user.registrationId,
+                user.handicapIndex != null ? String(user.handicapIndex) : "",
+              ]
+            )
+          )
+        );
         setEditForm({
           name: data.name ?? "",
           description: data.description ?? "",
@@ -510,6 +522,48 @@ export default function TournamentDetailPage() {
       loadTournament();
     } catch {
       setError("Failed to confirm payment");
+    }
+  };
+
+  const handleSaveRegistrationHandicap = async (registrationId: string) => {
+    if (!tournament) return;
+
+    const raw = handicapDrafts[registrationId]?.trim() ?? "";
+    const current = tournament.registeredUsers.find((u) => u.registrationId === registrationId);
+    const currentValue =
+      current?.handicapIndex != null ? String(current.handicapIndex) : "";
+
+    if (raw === currentValue) return;
+
+    if (raw !== "") {
+      const parsed = Number(raw);
+      if (!Number.isFinite(parsed) || parsed < 0 || parsed > 54) {
+        setError("Handicap index must be between 0 and 54");
+        return;
+      }
+    }
+
+    setSavingHandicapId(registrationId);
+    setError("");
+    try {
+      const res = await fetch(
+        `/api/tournaments/${tournament.id}/registrations/${registrationId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ handicapIndex: raw === "" ? null : Number(raw) }),
+        }
+      );
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error ?? "Failed to save handicap");
+        return;
+      }
+      loadTournament();
+    } catch {
+      setError("Failed to save handicap");
+    } finally {
+      setSavingHandicapId(null);
     }
   };
 
@@ -1348,6 +1402,38 @@ export default function TournamentDetailPage() {
                       )}
                     </Link>
                     <div className="flex shrink-0 items-center gap-2">
+                      {isAdmin ? (
+                        <label className="flex items-center gap-1.5 text-xs text-stone-600">
+                          <span className="font-medium">HCP</span>
+                          <input
+                            type="number"
+                            min={0}
+                            max={54}
+                            step={0.1}
+                            inputMode="decimal"
+                            aria-label={`${u.fullName} handicap index`}
+                            className="w-16 rounded-md border border-stone-300 px-2 py-1 text-sm text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-50"
+                            value={handicapDrafts[u.registrationId] ?? ""}
+                            disabled={savingHandicapId === u.registrationId}
+                            onChange={(e) =>
+                              setHandicapDrafts((prev) => ({
+                                ...prev,
+                                [u.registrationId]: e.target.value,
+                              }))
+                            }
+                            onBlur={() => void handleSaveRegistrationHandicap(u.registrationId)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.currentTarget.blur();
+                              }
+                            }}
+                          />
+                        </label>
+                      ) : u.handicapIndex != null ? (
+                        <span className="text-xs font-medium text-stone-500">
+                          HCP {u.handicapIndex}
+                        </span>
+                      ) : null}
                       {u.paymentStatus === "unpaid" && (
                         <>
                           <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600">

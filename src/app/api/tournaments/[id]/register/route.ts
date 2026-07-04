@@ -51,12 +51,18 @@ export async function POST(
     (tournamentWithCount.clubDonation ?? 0);
   const paymentStatus = totalBuyIn > 0 ? "unpaid" : "confirmed";
 
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { handicapIndex: true },
+  });
+
   try {
     await prisma.tournamentRegistration.create({
       data: {
         tournamentId,
         userId: session.user.id,
         paymentStatus,
+        handicapIndex: user?.handicapIndex ?? null,
       },
     });
     return NextResponse.json({ ok: true });
