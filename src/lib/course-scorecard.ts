@@ -43,7 +43,14 @@ export function parseCourseScorecard(
       const par = Number(row.par);
       if (!Number.isInteger(hole) || hole < 1) continue;
       if (!Number.isInteger(par) || par < 1) continue;
-      const handicap = Number(row.handicap ?? row.strokeIndex ?? row.hcp);
+      const handicap = Number(
+        row.handicap ??
+          row.strokeIndex ??
+          row.stroke_index ??
+          row.hcp ??
+          row.index ??
+          row.si
+      );
       holes.push({
         hole,
         par,

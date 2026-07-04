@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { mergeStrokeIndexesIntoCourseDetails } from "@/lib/course-stroke-indexes";
 
 export const OPENGOLF_ATTRIBUTION = "Contains data from OpenGolfAPI (opengolfapi.org)";
 export const OPENGOLF_API_BASE = "https://api.opengolfapi.org/v1";
@@ -45,7 +46,14 @@ export async function fetchAndCacheCourseDetails(id: string) {
     existing.detailsCachedAt &&
     now - existing.detailsCachedAt.getTime() < DETAILS_CACHE_MS
   ) {
-    return existing.detailsJson;
+    const enriched = mergeStrokeIndexesIntoCourseDetails(existing.detailsJson, id);
+    if (enriched !== existing.detailsJson) {
+      await prisma.golfCourse.update({
+        where: { id },
+        data: { detailsJson: enriched },
+      });
+    }
+    return enriched;
   }
 
   const res = await fetch(`${OPENGOLF_API_BASE}/courses/${id}`, {
@@ -56,13 +64,14 @@ export async function fetchAndCacheCourseDetails(id: string) {
   }
 
   const details = await res.json();
+  const enriched = mergeStrokeIndexesIntoCourseDetails(details, id);
   await prisma.golfCourse.update({
     where: { id },
     data: {
-      detailsJson: details,
+      detailsJson: enriched,
       detailsCachedAt: new Date(),
     },
   });
 
-  return details;
+  return enriched;
 }
