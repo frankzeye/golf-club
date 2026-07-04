@@ -1400,26 +1400,26 @@ export default function TournamentDetailPage() {
                     key={u.id}
                     className="flex items-center justify-between gap-3 rounded-lg border border-stone-200 px-3 py-2"
                   >
-                    <Link
-                      href={memberProfileHref(u)}
-                      className="flex min-w-0 flex-1 items-center gap-2 transition-colors hover:text-emerald-600"
-                    >
-                      <AvatarWithSash
-                        imageUrl={u.imageUrl}
-                        alt={u.fullName}
-                        size="md"
-                        fallback={u.firstName ? u.firstName[0].toUpperCase() : "?"}
-                      />
-                      <span className="font-medium text-stone-900 truncate">{u.fullName}</span>
-                      {u.scgaOfficial && (
-                        <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
-                          Official
-                        </span>
-                      )}
-                    </Link>
-                    <div className="flex shrink-0 items-center gap-2">
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                      <Link
+                        href={memberProfileHref(u)}
+                        className="flex min-w-0 items-center gap-2 transition-colors hover:text-emerald-600"
+                      >
+                        <AvatarWithSash
+                          imageUrl={u.imageUrl}
+                          alt={u.fullName}
+                          size="md"
+                          fallback={u.firstName ? u.firstName[0].toUpperCase() : "?"}
+                        />
+                        <span className="font-medium text-stone-900 truncate">{u.fullName}</span>
+                        {u.scgaOfficial && (
+                          <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
+                            Official
+                          </span>
+                        )}
+                      </Link>
                       {isAdmin ? (
-                        <label className="flex items-center gap-1.5 text-xs text-stone-600">
+                        <label className="flex shrink-0 items-center gap-1.5 text-xs text-stone-600">
                           <span className="font-medium">HCP</span>
                           <input
                             type="number"
@@ -1446,10 +1446,12 @@ export default function TournamentDetailPage() {
                           />
                         </label>
                       ) : u.handicapIndex != null ? (
-                        <span className="text-xs font-medium text-stone-500">
+                        <span className="shrink-0 text-xs font-medium text-stone-500">
                           HCP {u.handicapIndex}
                         </span>
                       ) : null}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
                       {u.paymentStatus === "unpaid" && (
                         <>
                           <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600">
