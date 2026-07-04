@@ -4,7 +4,7 @@ import {
   parsePlayerScores,
   type ScorecardHole,
 } from "@/lib/course-scorecard";
-import { loadPlayRoundScorecard } from "@/lib/play-round-format";
+import { loadPlayRoundScorecard } from "@/lib/load-play-round-scorecard";
 
 export const FLIGHTS_SCORING_FORMAT = "Flights";
 

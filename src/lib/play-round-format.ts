@@ -1,13 +1,11 @@
 import { memberSlug } from "@/lib/member-slug";
 import {
   holesPlayed,
-  parseCourseScorecard,
   parsePlayerScores,
   totalStrokes,
-  type ScorecardHole,
 } from "@/lib/course-scorecard";
-import { fetchAndCacheCourseDetails } from "@/lib/golf-course";
 import { prisma } from "@/lib/db";
+import { loadPlayRoundScorecard } from "@/lib/load-play-round-scorecard";
 import { getPlayRoundAccess } from "@/lib/play-round-access";
 import {
   buildFlightLeaderboards,
@@ -119,29 +117,7 @@ export function parsePlayRoundHandicapIndex(raw: unknown): number | null | undef
   return n;
 }
 
-export async function loadPlayRoundScorecard(
-  courseId: string | null,
-  holeCount: number,
-  coursePar?: number | null
-): Promise<ScorecardHole[]> {
-  if (!courseId) {
-    return parseCourseScorecard(null, { holeCount, totalPar: coursePar });
-  }
-
-  try {
-    const details = await fetchAndCacheCourseDetails(courseId);
-    return parseCourseScorecard(details, { holeCount, totalPar: coursePar });
-  } catch {
-    const course = await prisma.golfCourse.findUnique({
-      where: { id: courseId },
-      select: { par: true, detailsJson: true },
-    });
-    return parseCourseScorecard(course?.detailsJson ?? null, {
-      holeCount,
-      totalPar: course?.par ?? coursePar,
-    });
-  }
-}
+export { loadPlayRoundScorecard } from "@/lib/load-play-round-scorecard";
 
 export async function formatPlayRoundDetail(
   round: PlayRoundWithRelations,
