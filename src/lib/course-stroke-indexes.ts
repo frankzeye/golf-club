@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import type { ScorecardHole } from "@/lib/course-scorecard";
 
 /**
@@ -52,9 +53,9 @@ export function applyStrokeIndexOverrides(
 
 /** Merge known stroke indexes into cached OpenGolfAPI course details. */
 export function mergeStrokeIndexesIntoCourseDetails(
-  details: unknown,
+  details: Prisma.JsonValue,
   courseId: string | null | undefined
-): unknown {
+): Prisma.JsonValue {
   const overrides = strokeIndexOverridesForCourse(courseId);
   if (!overrides || !details || typeof details !== "object" || Array.isArray(details)) {
     return details;
@@ -80,5 +81,5 @@ export function mergeStrokeIndexesIntoCourseDetails(
     return { ...row, handicap: strokeIndex };
   });
 
-  return { ...record, scorecard };
+  return { ...record, scorecard } as Prisma.JsonValue;
 }

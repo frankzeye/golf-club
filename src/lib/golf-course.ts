@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { mergeStrokeIndexesIntoCourseDetails } from "@/lib/course-stroke-indexes";
 
@@ -34,7 +35,9 @@ export async function resolveCourseSelection(
   return { course: name, courseId: null };
 }
 
-export async function fetchAndCacheCourseDetails(id: string) {
+export async function fetchAndCacheCourseDetails(
+  id: string
+): Promise<Prisma.JsonValue> {
   const existing = await prisma.golfCourse.findUnique({
     where: { id },
     select: { detailsJson: true, detailsCachedAt: true },
@@ -50,7 +53,7 @@ export async function fetchAndCacheCourseDetails(id: string) {
     if (enriched !== existing.detailsJson) {
       await prisma.golfCourse.update({
         where: { id },
-        data: { detailsJson: enriched },
+        data: { detailsJson: enriched as Prisma.InputJsonValue },
       });
     }
     return enriched;
@@ -63,12 +66,12 @@ export async function fetchAndCacheCourseDetails(id: string) {
     throw new Error(`OpenGolfAPI returned ${res.status}`);
   }
 
-  const details = await res.json();
+  const details = (await res.json()) as Prisma.JsonValue;
   const enriched = mergeStrokeIndexesIntoCourseDetails(details, id);
   await prisma.golfCourse.update({
     where: { id },
     data: {
-      detailsJson: enriched,
+      detailsJson: enriched as Prisma.InputJsonValue,
       detailsCachedAt: new Date(),
     },
   });
