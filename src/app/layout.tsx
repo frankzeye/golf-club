@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { getServerSession } from "next-auth";
 import { SessionProvider } from "@/components/SessionProvider";
 import { Footer } from "@/components/Footer";
+import { authOptions } from "@/lib/auth";
 import "./globals.css";
 
 const inter = Inter({
@@ -17,15 +19,17 @@ export const metadata: Metadata = {
   description: "Your golf club social platform",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await getServerSession(authOptions);
+
   return (
     <html lang="en">
       <body className={`${inter.variable} flex min-h-screen flex-col font-sans antialiased`}>
-        <SessionProvider>
+        <SessionProvider session={session}>
           <div className="flex min-h-screen flex-col">
             <div className="flex-1">{children}</div>
             <Footer />

@@ -91,6 +91,8 @@ export default function Home() {
   }, []);
 
   const firstName = session?.user?.name?.split(" ")[0];
+  const isAuthenticated = status === "authenticated";
+  const authKnown = status !== "loading";
 
   return (
     <div className="flex min-h-screen flex-col bg-stone-50">
@@ -115,40 +117,36 @@ export default function Home() {
               Where friends are made and personal records set.
             </p>
 
-            {status === "loading" ? (
-              <div className="mt-8 flex justify-center">
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-600 border-t-transparent" />
-              </div>
-            ) : session ? (
-              <div className="mt-8">
-                <p className="text-sm font-medium text-emerald-700">
-                  Welcome back{firstName ? `, ${firstName}` : ""}
-                </p>
-                <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
-                  <Link
-                    href="/tournaments"
-                    className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-emerald-700"
-                  >
-                    View Tournaments
-                  </Link>
-                  <Link
-                    href="/profile"
-                    className="rounded-lg border border-stone-300 bg-white px-5 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50"
-                  >
-                    My Profile
-                  </Link>
-                </div>
-              </div>
-            ) : (
-              <div className="mt-8 flex justify-center">
+            <div className="mt-8 flex min-h-[88px] flex-col items-center justify-center">
+              {!authKnown ? null : isAuthenticated ? (
+                <>
+                  <p className="text-sm font-medium text-emerald-700">
+                    Welcome back{firstName ? `, ${firstName}` : ""}
+                  </p>
+                  <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+                    <Link
+                      href="/tournaments"
+                      className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-emerald-700"
+                    >
+                      View Tournaments
+                    </Link>
+                    <Link
+                      href="/profile"
+                      className="rounded-lg border border-stone-300 bg-white px-5 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50"
+                    >
+                      My Profile
+                    </Link>
+                  </div>
+                </>
+              ) : (
                 <Link
                   href="/tournaments"
                   className="text-sm font-medium text-emerald-600 hover:text-emerald-700"
                 >
                   Browse tournaments →
                 </Link>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </section>
 
@@ -198,9 +196,11 @@ export default function Home() {
                   Upcoming tournaments
                 </h2>
                 <p className="mt-1 text-sm text-stone-500">
-                  {session
-                    ? "Register before spots fill up."
-                    : "Anyone can browse — sign in to register."}
+                  {!authKnown
+                    ? "\u00a0"
+                    : isAuthenticated
+                      ? "Register before spots fill up."
+                      : "Anyone can browse — sign in to register."}
                 </p>
               </div>
               <Link

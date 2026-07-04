@@ -22,16 +22,11 @@ const mobileLinkClass =
   "block rounded-lg px-3 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50 hover:text-emerald-600";
 
 export function Header() {
-  const { data: session, status, update } = useSession();
+  const { data: session, status } = useSession();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (status !== "authenticated" || session?.user?.image) return;
-    void update();
-  }, [status, session?.user?.image, update]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
