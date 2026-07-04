@@ -9,8 +9,13 @@ import { AdminRegisterMemberForm } from "@/components/AdminRegisterMemberForm";
 import { CourseAutocomplete } from "@/components/CourseAutocomplete";
 import { AvatarWithSash } from "@/components/AvatarWithSash";
 import { formatStartTime } from "@/lib/tournament-time";
-import { TOURNAMENT_SCORING_FORMATS } from "@/lib/tournament-scoring-formats";
+import { TOURNAMENT_SCORING_FORMATS, FLIGHTS_SCORING_FORMAT } from "@/lib/tournament-scoring-formats";
 import { memberProfileHref } from "@/lib/member-slug";
+import {
+  TournamentFlightLeaderboards,
+  TournamentFlightsManager,
+  type TournamentFlightData,
+} from "@/components/TournamentFlightsManager";
 
 interface CommentUser {
   id: string;
@@ -44,6 +49,7 @@ interface RegisteredUser {
   fullName: string;
   imageUrl: string | null;
   scgaOfficial?: boolean;
+  handicapIndex: number | null;
   paymentStatus: string;
 }
 
@@ -107,6 +113,29 @@ interface TournamentDetail {
   isRegistered: boolean;
   myPaymentStatus: string | null;
   registeredUsers: RegisteredUser[];
+  flights?: TournamentFlightData[];
+  flightLeaderboards?: Array<{
+    flightId: string;
+    flightName: string;
+    minHandicap: number | null;
+    maxHandicap: number | null;
+    leader: {
+      userId: string;
+      fullName: string;
+      toPar: number | null;
+      total: number;
+    } | null;
+    rows: Array<{
+      rank: number;
+      userId: string;
+      fullName: string;
+      imageUrl: string | null;
+      handicapIndex: number | null;
+      total: number;
+      holesPlayed: number;
+      toPar: number | null;
+    }>;
+  }>;
 }
 
 export default function TournamentDetailPage() {
@@ -1259,6 +1288,18 @@ export default function TournamentDetailPage() {
             <p className="mt-4 text-sm text-red-600">{error}</p>
           )}
 
+          {isAdmin && tournament.scoringFormat === FLIGHTS_SCORING_FORMAT && !isEditing ? (
+            <TournamentFlightsManager
+              tournamentId={tournament.slug ?? tournament.id}
+              scoringFormat={tournament.scoringFormat}
+              registeredUsers={tournament.registeredUsers}
+              initialFlights={tournament.flights ?? []}
+              onFlightsChange={(flights) =>
+                setTournament((prev) => (prev ? { ...prev, flights } : prev))
+              }
+            />
+          ) : null}
+
           {(tournament.registeredUsers.length > 0 || isAdmin) && (
             <div className="mt-8 border-t border-stone-200 pt-6">
               <h2 className="text-sm font-semibold text-stone-900">
@@ -1348,6 +1389,10 @@ export default function TournamentDetailPage() {
               </div>
             </div>
           )}
+
+          {(tournament.flightLeaderboards?.length ?? 0) > 0 ? (
+            <TournamentFlightLeaderboards flightLeaderboards={tournament.flightLeaderboards!} />
+          ) : null}
 
           <div className="mt-8 border-t border-stone-200 pt-6">
             <h2 className="text-sm font-semibold text-stone-900">Comments</h2>

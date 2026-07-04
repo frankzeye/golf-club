@@ -9,3 +9,5 @@ export const TOURNAMENT_SCORING_FORMATS = [
 ] as const;
 
 export type TournamentScoringFormat = (typeof TOURNAMENT_SCORING_FORMATS)[number];
+
+export const FLIGHTS_SCORING_FORMAT: TournamentScoringFormat = "Flights";

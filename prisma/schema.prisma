@@ -46,6 +46,7 @@ model User {
   scgaOfficial  Boolean  @default(false)
   createdAt     DateTime @default(now())
   tournamentRegistrations TournamentRegistration[]
+  tournamentFlightMembers TournamentFlightMember[]
   comments      Comment[]
   surveySelections SurveyDateSelection[]
   surveysCreated   Survey[] @relation("SurveyCreator")
@@ -159,6 +160,31 @@ model Tournament {
   registrations  TournamentRegistration[]
   comments       Comment[]
   playRound      PlayRound?
+  flights        TournamentFlight[]
+}
+
+model TournamentFlight {
+  id           String   @id @default(cuid())
+  tournamentId String
+  name         String
+  sortOrder    Int      @default(0)
+  minHandicap  Float?
+  maxHandicap  Float?
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  members      TournamentFlightMember[]
+
+  @@index([tournamentId])
+}
+
+model TournamentFlightMember {
+  id       String           @id @default(cuid())
+  flightId String
+  userId   String
+  flight   TournamentFlight @relation(fields: [flightId], references: [id], onDelete: Cascade)
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([flightId, userId])
+  @@index([userId])
 }
 
 model TournamentRegistration {

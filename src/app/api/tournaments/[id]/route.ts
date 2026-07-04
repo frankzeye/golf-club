@@ -6,6 +6,13 @@ import { findTournamentByIdOrSlug } from "@/lib/tournament-resolve";
 import { tournamentSlug, findUniqueSlug } from "@/lib/tournament-slug";
 import { parseStartTime } from "@/lib/tournament-time";
 import { resolveCourseSelection } from "@/lib/golf-course";
+import { playRoundInclude } from "@/lib/play-round-format";
+import {
+  buildFlightLeaderboards,
+  flightInclude,
+  FLIGHTS_SCORING_FORMAT,
+  formatTournamentFlights,
+} from "@/lib/tournament-flights";
 
 /**
  * GET /api/tournaments/[id] - Get a single tournament's details
@@ -38,9 +45,14 @@ export async function GET(
               lastName: true,
               imageUrl: true,
               scgaOfficial: true,
+              handicapIndex: true,
             },
           },
         },
+      },
+      flights: {
+        include: flightInclude,
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
       },
       playRound: {
         select: {
@@ -69,8 +81,25 @@ export async function GET(
     fullName: [r.user.firstName, r.user.lastName].filter(Boolean).join(" ") || "—",
     imageUrl: r.user.imageUrl,
     scgaOfficial: r.user.scgaOfficial ?? false,
+    handicapIndex: r.user.handicapIndex,
     paymentStatus: r.paymentStatus,
   }));
+
+  const flights =
+    t.scoringFormat === FLIGHTS_SCORING_FORMAT
+      ? formatTournamentFlights(t.flights)
+      : [];
+
+  let flightLeaderboards: Awaited<ReturnType<typeof buildFlightLeaderboards>> = [];
+  if (t.scoringFormat === FLIGHTS_SCORING_FORMAT && t.playRound && flights.length > 0) {
+    const scoringRound = await prisma.playRound.findUnique({
+      where: { id: t.playRound.id },
+      include: playRoundInclude,
+    });
+    if (scoringRound) {
+      flightLeaderboards = await buildFlightLeaderboards(flights, scoringRound);
+    }
+  }
 
   return NextResponse.json({
     id: t.id,
@@ -106,6 +135,8 @@ export async function GET(
       !!myRegistration &&
       !!t.playRound &&
       t.playRound.status === "in_progress",
+    flights,
+    flightLeaderboards,
   });
 }
 

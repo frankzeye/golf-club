@@ -323,6 +323,22 @@ export default function ProfilePage() {
             />
           </div>
 
+          <div className="rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-600">
+            <p>
+              You can join the official Spencer&apos;s Crossing Golf Club SCGA club for $41
+              using the link below. This gives you a GHIN number and access to the SCGA
+              scoring/handicapping app.
+            </p>
+            <a
+              href="https://membership.scga.org/start/join/?cid=10842"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-block text-emerald-600 hover:text-emerald-700"
+            >
+              https://membership.scga.org/start/join/?cid=10842
+            </a>
+          </div>
+
           <div>
             <label
               htmlFor="ghinNumber"
