@@ -40,8 +40,10 @@ export async function fetchAndCacheCourseDetails(
 ): Promise<Prisma.JsonValue> {
   const existing = await prisma.golfCourse.findUnique({
     where: { id },
-    select: { detailsJson: true, detailsCachedAt: true },
+    select: { detailsJson: true, detailsCachedAt: true, strokeIndexesJson: true },
   });
+
+  const dbStrokeIndexes = existing?.strokeIndexesJson ?? null;
 
   const now = Date.now();
   if (
@@ -49,7 +51,11 @@ export async function fetchAndCacheCourseDetails(
     existing.detailsCachedAt &&
     now - existing.detailsCachedAt.getTime() < DETAILS_CACHE_MS
   ) {
-    const enriched = mergeStrokeIndexesIntoCourseDetails(existing.detailsJson, id);
+    const enriched = mergeStrokeIndexesIntoCourseDetails(
+      existing.detailsJson,
+      id,
+      dbStrokeIndexes
+    );
     if (enriched !== existing.detailsJson) {
       await prisma.golfCourse.update({
         where: { id },
@@ -67,7 +73,7 @@ export async function fetchAndCacheCourseDetails(
   }
 
   const details = (await res.json()) as Prisma.JsonValue;
-  const enriched = mergeStrokeIndexesIntoCourseDetails(details, id);
+  const enriched = mergeStrokeIndexesIntoCourseDetails(details, id, dbStrokeIndexes);
   await prisma.golfCourse.update({
     where: { id },
     data: {

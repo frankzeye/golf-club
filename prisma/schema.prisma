@@ -17,6 +17,8 @@ model GolfCourse {
   par             Int?
   detailsJson     Json?
   detailsCachedAt DateTime?
+  // Admin-set hole stroke indexes keyed by hole number, e.g. {"1": 13, "2": 9}
+  strokeIndexesJson Json?
   updatedAt       DateTime @updatedAt
 
   users       User[]

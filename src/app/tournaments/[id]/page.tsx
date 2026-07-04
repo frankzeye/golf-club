@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Header } from "@/components/Header";
 import { AdminRegisterMemberForm } from "@/components/AdminRegisterMemberForm";
 import { CourseAutocomplete } from "@/components/CourseAutocomplete";
+import { CourseStrokeIndexEditor } from "@/components/CourseStrokeIndexEditor";
 import { AvatarWithSash } from "@/components/AvatarWithSash";
 import { formatStartTime } from "@/lib/tournament-time";
 import { TOURNAMENT_SCORING_FORMATS, FLIGHTS_SCORING_FORMAT } from "@/lib/tournament-scoring-formats";
@@ -103,6 +104,7 @@ interface TournamentDetail {
   date: string;
   startTime: string | null;
   course: string;
+  courseId?: string | null;
   scoringFormat: string;
   individualOrTeam: string;
   teamSize: number | null;
@@ -1346,6 +1348,20 @@ export default function TournamentDetailPage() {
           {error && (
             <p className="mt-4 text-sm text-red-600">{error}</p>
           )}
+
+          {isAdmin && !isEditing && tournament.courseId ? (
+            <CourseStrokeIndexEditor
+              courseId={tournament.courseId}
+              className="mt-8"
+            />
+          ) : null}
+
+          {isAdmin && isEditing && editForm.courseId ? (
+            <CourseStrokeIndexEditor
+              courseId={editForm.courseId}
+              className="mt-6"
+            />
+          ) : null}
 
           {isAdmin && !isEditing ? (
             <TournamentFoursomesManager

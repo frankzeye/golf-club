@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { CourseAutocomplete } from "@/components/CourseAutocomplete";
+import { CourseStrokeIndexEditor } from "@/components/CourseStrokeIndexEditor";
 import { formatStartTime } from "@/lib/tournament-time";
 import { TOURNAMENT_SCORING_FORMATS } from "@/lib/tournament-scoring-formats";
 import { AvatarWithSash } from "@/components/AvatarWithSash";
@@ -315,6 +316,9 @@ export default function TournamentsPage() {
                   className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
+              {form.courseId ? (
+                <CourseStrokeIndexEditor courseId={form.courseId} />
+              ) : null}
               <div>
                 <label className="block text-sm font-medium text-stone-700">
                   Golf Scoring Format
