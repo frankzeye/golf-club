@@ -13,6 +13,7 @@ import {
   FLIGHTS_SCORING_FORMAT,
   formatTournamentFlights,
 } from "@/lib/tournament-flights";
+import { formatTournamentTeams, teamInclude } from "@/lib/tournament-teams";
 
 const playerUserSelect = {
   id: true,
@@ -37,8 +38,12 @@ export const playRoundInclude = {
       slug: true,
       name: true,
       scoringFormat: true,
+      individualOrTeam: true,
       flights: {
         include: flightInclude,
+      },
+      teams: {
+        include: teamInclude,
       },
     },
   },
@@ -76,12 +81,29 @@ type PlayRoundWithRelations = Awaited<
     slug: string | null;
     name: string;
     scoringFormat: string;
+    individualOrTeam: string;
     flights: Array<{
       id: string;
       name: string;
       sortOrder: number;
       minHandicap: number | null;
       maxHandicap: number | null;
+      members: Array<{
+        user: {
+          id: string;
+          slug: string | null;
+          firstName: string;
+          lastName: string;
+          imageUrl: string | null;
+          handicapIndex: number | null;
+          scgaOfficial: boolean;
+        };
+      }>;
+    }>;
+    teams: Array<{
+      id: string;
+      name: string;
+      sortOrder: number;
       members: Array<{
         user: {
           id: string;
@@ -176,6 +198,11 @@ export async function formatPlayRoundDetail(
     tournamentId: round.tournamentId ?? null,
     tournamentName: round.tournament?.name ?? null,
     tournamentScoringFormat: round.tournament?.scoringFormat ?? null,
+    tournamentIndividualOrTeam: round.tournament?.individualOrTeam ?? null,
+    tournamentTeams:
+      round.tournament?.individualOrTeam === "team"
+        ? formatTournamentTeams(round.tournament.teams)
+        : [],
     holeCount: round.holeCount,
     status: round.status,
     createdAt: round.createdAt.toISOString(),

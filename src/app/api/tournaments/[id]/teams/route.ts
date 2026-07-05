@@ -67,7 +67,7 @@ export async function PUT(
       );
     }
 
-    const teamSize = tournament.teamSize === 4 ? 4 : 2;
+    const teamSize = tournament.teamSize ?? 2;
     const body = await request.json();
     const drafts: TeamDraft[] = Array.isArray(body.teams) ? body.teams : [];
     const registrations = await prisma.tournamentRegistration.findMany({

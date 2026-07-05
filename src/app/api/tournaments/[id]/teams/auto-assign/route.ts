@@ -42,7 +42,7 @@ export async function POST(
       );
     }
 
-    const teamSize = tournament.teamSize === 4 ? 4 : 2;
+    const teamSize = tournament.teamSize ?? 2;
     const registrations = await prisma.tournamentRegistration.findMany({
       where: { tournamentId: tournament.id },
       orderBy: { createdAt: "asc" },

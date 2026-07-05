@@ -13,10 +13,14 @@ export interface AutoAssignTeam {
   userIds: string[];
 }
 
+function effectiveTeamSize(teamSize: number): number {
+  return Number.isInteger(teamSize) && teamSize >= 1 ? teamSize : 2;
+}
+
 export function autoAssignTeams(userIds: string[], teamSize: number): AutoAssignTeam[] {
   if (userIds.length === 0) return [];
 
-  const size = teamSize === 4 ? 4 : 2;
+  const size = effectiveTeamSize(teamSize);
   const teams: AutoAssignTeam[] = [];
   for (let i = 0; i < userIds.length; i += size) {
     const group = userIds.slice(i, i + size);
@@ -34,7 +38,7 @@ export function validateTeamDrafts(
   registeredUserIds: Set<string>,
   teamSize: number
 ): string | null {
-  const maxSize = teamSize === 4 ? 4 : 2;
+  const maxSize = effectiveTeamSize(teamSize);
   const seen = new Set<string>();
 
   for (const team of drafts) {
