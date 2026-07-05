@@ -165,7 +165,7 @@ export function formatTournamentFlights(
     }));
 }
 
-type PlayRoundPlayerForLeaderboard = {
+export type PlayRoundPlayerForLeaderboard = {
   id: string;
   userId: string;
   scores: unknown;
@@ -180,7 +180,7 @@ type PlayRoundPlayerForLeaderboard = {
   };
 };
 
-function mapPlayRoundPlayersForLeaderboard(
+export function mapPlayRoundPlayersForLeaderboard(
   players: PlayRoundPlayerForLeaderboard[]
 ) {
   return players.map((player) => {

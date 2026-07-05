@@ -570,3 +570,89 @@ export function TournamentLeaderboard({
     </div>
   );
 }
+
+export interface TournamentTeamLeaderboardRowData {
+  rank: number;
+  teamId: string;
+  teamName: string;
+  memberNames: string;
+  memberCount: number;
+  total: number;
+  holesPlayed: number;
+  toPar: number | null;
+  isStableford: boolean;
+}
+
+export function TournamentTeamLeaderboard({
+  rows,
+  holeCount,
+}: {
+  rows: TournamentTeamLeaderboardRowData[];
+  holeCount?: number;
+}) {
+  if (rows.length === 0) return null;
+
+  const leader = rows.find((row) =>
+    row.isStableford ? row.rank === 1 && row.total > 0 : row.rank === 1 && row.toPar != null
+  );
+
+  return (
+    <div className="mt-8 border-t border-stone-200 pt-6">
+      <h2 className="text-sm font-semibold text-stone-900">Team Leaderboard</h2>
+      <p className="mt-1 text-sm text-stone-500">
+        {rows[0]?.isStableford
+          ? "Final standings by combined Stableford points."
+          : "Final standings by combined team score relative to par."}
+      </p>
+      <div className="mt-4 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
+        {leader ? (
+          <div className="border-b border-stone-200 bg-stone-50 px-4 py-3">
+            <p className="text-xs text-emerald-700">
+              Winner: {leader.teamName}{" "}
+              ({leader.isStableford ? `${leader.total} pts` : formatLeaderboardToPar(leader.toPar)})
+            </p>
+          </div>
+        ) : null}
+        <div className="divide-y divide-stone-100">
+          {rows.map((row) => {
+            const hasScore = row.isStableford ? row.total > 0 : row.toPar != null;
+            return (
+              <div key={row.teamId} className="flex items-center gap-3 px-4 py-3">
+                <span
+                  className={`w-6 text-center text-sm font-bold ${
+                    row.rank === 1 && hasScore ? "text-emerald-700" : "text-stone-400"
+                  }`}
+                >
+                  {hasScore ? row.rank : "—"}
+                </span>
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-sm font-bold text-emerald-700">
+                  {row.teamName.trim().charAt(0).toUpperCase() || "T"}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-stone-900">{row.teamName}</p>
+                  <p className="text-xs text-stone-500">
+                    {row.memberNames || `${row.memberCount} players`}
+                    {hasScore
+                      ? row.isStableford
+                        ? ` · ${row.total} pts`
+                        : ` · ${row.total} strokes · ${row.holesPlayed}${
+                            holeCount ? `/${holeCount}` : ""
+                          } holes`
+                      : " · No scores yet"}
+                  </p>
+                </div>
+                <span className="text-lg font-bold text-stone-900">
+                  {row.isStableford
+                    ? hasScore
+                      ? `${row.total} pts`
+                      : "—"
+                    : formatLeaderboardToPar(row.toPar)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}

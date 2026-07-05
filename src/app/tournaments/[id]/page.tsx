@@ -16,6 +16,7 @@ import {
   TournamentFlightLeaderboards,
   TournamentFlightsManager,
   TournamentLeaderboard,
+  TournamentTeamLeaderboard,
   type TournamentFlightData,
 } from "@/components/TournamentFlightsManager";
 import {
@@ -158,6 +159,17 @@ interface TournamentDetail {
     total: number;
     holesPlayed: number;
     toPar: number | null;
+  }>;
+  teamLeaderboard?: Array<{
+    rank: number;
+    teamId: string;
+    teamName: string;
+    memberNames: string;
+    memberCount: number;
+    total: number;
+    holesPlayed: number;
+    toPar: number | null;
+    isStableford: boolean;
   }>;
   playRound?: {
     id: string;
@@ -1557,6 +1569,14 @@ export default function TournamentDetailPage() {
 
           {tournament.scoringCompleted &&
           tournament.scoringFormat !== FLIGHTS_SCORING_FORMAT &&
+          tournament.individualOrTeam === "team" &&
+          (tournament.teamLeaderboard?.length ?? 0) > 0 ? (
+            <TournamentTeamLeaderboard rows={tournament.teamLeaderboard!} />
+          ) : null}
+
+          {tournament.scoringCompleted &&
+          tournament.scoringFormat !== FLIGHTS_SCORING_FORMAT &&
+          tournament.individualOrTeam !== "team" &&
           (tournament.leaderboard?.length ?? 0) > 0 ? (
             <TournamentLeaderboard rows={tournament.leaderboard!} />
           ) : null}

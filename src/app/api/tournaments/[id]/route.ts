@@ -18,6 +18,10 @@ import {
 } from "@/lib/tournament-flights";
 import { foursomeInclude, formatTournamentFoursomes } from "@/lib/tournament-foursomes";
 import { teamInclude, formatTournamentTeams } from "@/lib/tournament-teams";
+import {
+  buildOverallTeamLeaderboard,
+  type TournamentTeamLeaderboardRow,
+} from "@/lib/tournament-leaderboard";
 import { isTournamentScoringCompleted, isTournamentUpcoming } from "@/lib/tournament-status";
 
 /**
@@ -109,6 +113,7 @@ export async function GET(
 
   let flightLeaderboards: Awaited<ReturnType<typeof buildFlightLeaderboards>> = [];
   let leaderboard: TournamentLeaderboardRow[] = [];
+  let teamLeaderboard: TournamentTeamLeaderboardRow[] = [];
 
   if (t.playRound?.status === "completed") {
     const scoringRound = await prisma.playRound.findUnique({
@@ -116,7 +121,15 @@ export async function GET(
       include: playRoundInclude,
     });
     if (scoringRound) {
-      leaderboard = await buildOverallLeaderboard(scoringRound);
+      if (t.individualOrTeam === "team" && teams.length > 0) {
+        teamLeaderboard = await buildOverallTeamLeaderboard(
+          teams,
+          scoringRound,
+          t.scoringFormat
+        );
+      } else {
+        leaderboard = await buildOverallLeaderboard(scoringRound);
+      }
       if (t.scoringFormat === FLIGHTS_SCORING_FORMAT && flights.length > 0) {
         flightLeaderboards = await buildFlightLeaderboards(flights, scoringRound);
       }
@@ -164,6 +177,7 @@ export async function GET(
     teams,
     flightLeaderboards,
     leaderboard,
+    teamLeaderboard,
   });
 }
 
