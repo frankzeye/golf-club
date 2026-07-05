@@ -53,6 +53,7 @@ type PlayRoundWithRelations = Awaited<
     userId: string;
     scores: unknown;
     handicapIndex: number | null;
+    scoringSubmittedAt: Date | null;
     user: {
       id: string;
       slug: string | null;
@@ -237,9 +238,12 @@ export async function formatPlayRoundResponse(
     }
   }
 
+  const viewerPlayer = round.players.find((player) => player.userId === viewerId);
+
   return {
     ...detail,
     scorablePlayerIds: access.scorablePlayerIds,
     foursomeMemberUserIds,
+    viewerScoringSubmitted: viewerPlayer?.scoringSubmittedAt != null,
   };
 }

@@ -196,6 +196,8 @@ model TournamentFoursome {
   tournamentId String
   name         String
   sortOrder    Int      @default(0)
+  startTime    String?  // "HH:mm" tee time for this group
+  startHole    Int      @default(1)
   tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   members      TournamentFoursomeMember[]
 
@@ -275,13 +277,14 @@ model PlayRound {
 }
 
 model PlayRoundPlayer {
-  id             String   @id @default(cuid())
-  playRoundId    String
-  userId         String
-  scores         Json     @default("{}")
-  handicapIndex  Float?
-  playRound      PlayRound @relation(fields: [playRoundId], references: [id], onDelete: Cascade)
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                  String    @id @default(cuid())
+  playRoundId         String
+  userId              String
+  scores              Json      @default("{}")
+  handicapIndex       Float?
+  scoringSubmittedAt  DateTime?
+  playRound           PlayRound @relation(fields: [playRoundId], references: [id], onDelete: Cascade)
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([playRoundId, userId])
 }

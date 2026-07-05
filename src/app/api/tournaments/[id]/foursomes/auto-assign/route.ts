@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
   autoAssignFoursomes,
+  DEFAULT_FOURSOME_START_HOLE,
   foursomeInclude,
   formatTournamentFoursomes,
 } from "@/lib/tournament-foursomes";
@@ -51,6 +52,7 @@ export async function POST(
             tournamentId: tournament.id,
             name: foursome.name,
             sortOrder: foursome.sortOrder,
+            startHole: DEFAULT_FOURSOME_START_HOLE,
             members: {
               create: foursome.userIds.map((userId) => ({ userId })),
             },

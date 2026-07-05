@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AvatarWithSash } from "@/components/AvatarWithSash";
-import { MAX_FOURSOME_SIZE } from "@/lib/tournament-foursomes";
+import {
+  DEFAULT_FOURSOME_START_HOLE,
+  MAX_FOURSOME_SIZE,
+  MAX_FOURSOME_START_HOLE,
+} from "@/lib/tournament-foursomes";
 
 interface RegisteredPlayer {
   id: string;
@@ -15,6 +19,8 @@ export interface TournamentFoursomeData {
   id: string;
   name: string;
   sortOrder: number;
+  startTime: string | null;
+  startHole: number;
   memberUserIds: string[];
   members: Array<{
     id: string;
@@ -27,6 +33,8 @@ export interface TournamentFoursomeData {
 interface FoursomeDraft {
   clientId: string;
   name: string;
+  startTime: string;
+  startHole: number;
   userIds: string[];
 }
 
@@ -41,6 +49,8 @@ function toDraft(foursome: TournamentFoursomeData): FoursomeDraft {
   return {
     clientId: foursome.id,
     name: foursome.name,
+    startTime: foursome.startTime ?? "",
+    startHole: foursome.startHole ?? DEFAULT_FOURSOME_START_HOLE,
     userIds: [...foursome.memberUserIds],
   };
 }
@@ -49,6 +59,8 @@ function newDraft(index: number): FoursomeDraft {
   return {
     clientId: `new-${Date.now()}-${index}`,
     name: `Group ${index + 1}`,
+    startTime: "",
+    startHole: DEFAULT_FOURSOME_START_HOLE,
     userIds: [],
   };
 }
@@ -87,6 +99,8 @@ export function TournamentFoursomesManager({
     return drafts.map((draft, index) => ({
       name: draft.name.trim(),
       sortOrder: index,
+      startTime: draft.startTime.trim() || null,
+      startHole: draft.startHole,
       userIds: draft.userIds,
     }));
   }, [drafts]);
@@ -174,8 +188,9 @@ export function TournamentFoursomesManager({
         <div>
           <h2 className="text-sm font-semibold text-stone-900">Foursomes</h2>
           <p className="mt-1 text-sm text-stone-500">
-            Group players into foursomes of up to four. When scoring starts, each player
-            can enter scores for everyone in their foursome.
+            Group players into foursomes of up to four. Set a tee time and starting hole for
+            each group. When scoring starts, each player can enter scores for everyone in
+            their foursome.
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
@@ -229,8 +244,8 @@ export function TournamentFoursomesManager({
             key={draft.clientId}
             className="rounded-xl border border-stone-200 bg-stone-50/60 p-4"
           >
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <div className="flex-1">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+              <div className="min-w-[10rem] flex-1">
                 <label className="block text-xs font-medium uppercase tracking-wide text-stone-500">
                   Group name
                 </label>
@@ -248,6 +263,52 @@ export function TournamentFoursomesManager({
                   }
                   className="mt-1 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900"
                 />
+              </div>
+              <div className="w-full sm:w-40">
+                <label className="block text-xs font-medium uppercase tracking-wide text-stone-500">
+                  Tee time
+                </label>
+                <input
+                  type="time"
+                  value={draft.startTime}
+                  onChange={(e) =>
+                    setDrafts((prev) =>
+                      prev.map((item) =>
+                        item.clientId === draft.clientId
+                          ? { ...item, startTime: e.target.value }
+                          : item
+                      )
+                    )
+                  }
+                  className="mt-1 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900"
+                />
+              </div>
+              <div className="w-full sm:w-32">
+                <label className="block text-xs font-medium uppercase tracking-wide text-stone-500">
+                  Start hole
+                </label>
+                <select
+                  value={draft.startHole}
+                  onChange={(e) =>
+                    setDrafts((prev) =>
+                      prev.map((item) =>
+                        item.clientId === draft.clientId
+                          ? { ...item, startHole: Number(e.target.value) }
+                          : item
+                      )
+                    )
+                  }
+                  className="mt-1 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900"
+                >
+                  {Array.from({ length: MAX_FOURSOME_START_HOLE }, (_, index) => {
+                    const hole = index + 1;
+                    return (
+                      <option key={hole} value={hole}>
+                        Hole {hole}
+                      </option>
+                    );
+                  })}
+                </select>
               </div>
               {drafts.length > 1 ? (
                 <button

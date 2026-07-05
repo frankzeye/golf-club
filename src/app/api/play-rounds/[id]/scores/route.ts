@@ -73,6 +73,19 @@ export async function PATCH(
       return NextResponse.json({ error: "Player not found on this round" }, { status: 404 });
     }
 
+    if (access.viewerPlayerId) {
+      const viewerPlayer = await prisma.playRoundPlayer.findUnique({
+        where: { id: access.viewerPlayerId },
+        select: { scoringSubmittedAt: true },
+      });
+      if (viewerPlayer?.scoringSubmittedAt) {
+        return NextResponse.json(
+          { error: "Your scores are already submitted for this round" },
+          { status: 400 }
+        );
+      }
+    }
+
     const scores = parsePlayerScores(player.scores);
     const holeKey = String(hole);
 

@@ -4,10 +4,12 @@ import { prisma } from "@/lib/db";
 import {
   foursomeInclude,
   formatTournamentFoursomes,
+  parseFoursomeStartHole,
   validateFoursomeDrafts,
   type FoursomeDraft,
 } from "@/lib/tournament-foursomes";
 import { findTournamentByIdOrSlug } from "@/lib/tournament-resolve";
+import { parseStartTime } from "@/lib/tournament-time";
 
 /**
  * GET /api/tournaments/[id]/foursomes — List foursomes and members.
@@ -74,6 +76,8 @@ export async function PUT(
             tournamentId: tournament.id,
             name: draft.name.trim(),
             sortOrder: draft.sortOrder ?? index,
+            startTime: parseStartTime(draft.startTime),
+            startHole: parseFoursomeStartHole(draft.startHole),
             members: {
               create: draft.userIds.map((userId) => ({ userId })),
             },
