@@ -1,17 +1,11 @@
-import {
-  playerCumulativeToPar,
-  playerNetTotal,
-  playerNetCumulativeToPar,
-  playerStablefordPoints,
-  type LeaderboardScoringMode,
-  type ScorecardHole,
-} from "@/lib/course-scorecard";
 import { loadPlayRoundScorecard } from "@/lib/load-play-round-scorecard";
+import { aggregateTeamStrokeStats } from "@/lib/team-scoring";
 import { formatTournamentTeams } from "@/lib/tournament-teams";
 import {
   mapPlayRoundPlayersForLeaderboard,
   type PlayRoundPlayerForLeaderboard,
 } from "@/lib/tournament-flights";
+import type { LeaderboardScoringMode } from "@/lib/course-scorecard";
 
 export type TournamentTeamLeaderboardRow = {
   rank: number;
@@ -74,7 +68,6 @@ export async function buildOverallTeamLeaderboard(
     null
   );
 
-  const isStableford = scoringFormat === "Stableford";
   const playerByUserId = new Map(
     mapPlayRoundPlayersForLeaderboard(playRound.players).map((player) => [
       player.userId,
@@ -88,77 +81,22 @@ export async function buildOverallTeamLeaderboard(
       .filter((player): player is NonNullable<typeof player> => player != null);
 
     const memberNames = team.members.map((member) => member.fullName).join(", ");
-
-    if (isStableford) {
-      const total = members.reduce(
-        (sum, player) =>
-          sum +
-          playerStablefordPoints(
-            player.scores,
-            scorecard as ScorecardHole[],
-            player.handicapIndex,
-            scoringMode
-          ),
-        0
-      );
-      const holesPlayed =
-        members.length > 0 ? Math.max(...members.map((player) => player.holesPlayed)) : 0;
-
-      return {
-        teamId: team.id,
-        teamName: team.name,
-        memberNames,
-        memberCount: team.members.length,
-        total,
-        holesPlayed,
-        toPar: null,
-        isStableford: true,
-      };
-    }
-
-    const total = members.reduce(
-      (sum, player) =>
-        sum +
-        (scoringMode === "net"
-          ? playerNetTotal(player.scores, scorecard as ScorecardHole[], player.handicapIndex)
-          : player.total),
-      0
-    );
-
-    let toParSum = 0;
-    let hasScore = false;
-    for (const player of members) {
-      const toPar =
-        scoringMode === "net"
-          ? playerNetCumulativeToPar(
-              player.scores,
-              scorecard as ScorecardHole[],
-              player.handicapIndex
-            )
-          : playerCumulativeToPar(player.scores, scorecard as ScorecardHole[]);
-      if (toPar != null) {
-        toParSum += toPar;
-        hasScore = true;
-      }
-    }
-
-    const holesPlayed =
-      members.length > 0 ? Math.min(...members.map((player) => player.holesPlayed)) : 0;
+    const stats = aggregateTeamStrokeStats(members, scorecard, scoringFormat, scoringMode);
 
     return {
       teamId: team.id,
       teamName: team.name,
       memberNames,
       memberCount: team.members.length,
-      total,
-      holesPlayed,
-      toPar: hasScore ? toParSum : null,
-      isStableford: false,
+      total: stats.total,
+      holesPlayed: stats.holesPlayed,
+      toPar: stats.toPar,
+      isStableford: stats.isStableford,
     };
   });
 
   const sorted = [...rows].sort((a, b) => {
-    if (isStableford) {
+    if (a.isStableford) {
       if (a.total !== b.total) return b.total - a.total;
       return b.holesPlayed - a.holesPlayed;
     }

@@ -636,12 +636,14 @@ export interface TournamentTeamLeaderboardRowData {
 
 export function TournamentTeamLeaderboard({
   leaderboards,
+  scoringFormat,
   holeCount,
 }: {
   leaderboards: {
     net: TournamentTeamLeaderboardRowData[];
     gross: TournamentTeamLeaderboardRowData[];
   };
+  scoringFormat?: string;
   holeCount?: number;
 }) {
   const [scoringMode, setScoringMode] = useState<"net" | "gross">("net");
@@ -653,6 +655,8 @@ export function TournamentTeamLeaderboard({
     row.isStableford ? row.rank === 1 && row.total > 0 : row.rank === 1 && row.toPar != null
   );
   const isStableford = rows[0]?.isStableford ?? false;
+  const isBestBall = scoringFormat === "Best Ball";
+  const isScramble = scoringFormat === "Scramble";
 
   return (
     <div className="mt-8 border-t border-stone-200 pt-6">
@@ -662,7 +666,11 @@ export function TournamentTeamLeaderboard({
           <p className="mt-1 text-sm text-stone-500">
             {isStableford
               ? "Final standings by combined Stableford points."
-              : "Final standings by combined team score relative to par."}
+              : isBestBall
+                ? "Best ball — lowest score per hole counts toward the team total."
+                : isScramble
+                  ? "Scramble — one team scorecard per group."
+                  : "Final standings by combined team score relative to par."}
           </p>
         </div>
         <LeaderboardScoringToggle mode={scoringMode} onChange={setScoringMode} />

@@ -1624,7 +1624,10 @@ export default function TournamentDetailPage() {
           tournament.teamLeaderboard &&
           (tournament.teamLeaderboard.net.length > 0 ||
             tournament.teamLeaderboard.gross.length > 0) ? (
-            <TournamentTeamLeaderboard leaderboards={tournament.teamLeaderboard} />
+            <TournamentTeamLeaderboard
+              leaderboards={tournament.teamLeaderboard}
+              scoringFormat={tournament.scoringFormat}
+            />
           ) : null}
 
           {tournament.scoringCompleted &&

@@ -11,3 +11,6 @@ export const TOURNAMENT_SCORING_FORMATS = [
 export type TournamentScoringFormat = (typeof TOURNAMENT_SCORING_FORMATS)[number];
 
 export const FLIGHTS_SCORING_FORMAT: TournamentScoringFormat = "Flights";
+export const BEST_BALL_SCORING_FORMAT: TournamentScoringFormat = "Best Ball";
+export const SCRAMBLE_SCORING_FORMAT: TournamentScoringFormat = "Scramble";
+export const STABLEFORD_SCORING_FORMAT: TournamentScoringFormat = "Stableford";
