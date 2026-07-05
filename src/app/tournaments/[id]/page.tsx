@@ -15,12 +15,17 @@ import { memberProfileHref } from "@/lib/member-slug";
 import {
   TournamentFlightLeaderboards,
   TournamentFlightsManager,
+  TournamentLeaderboard,
   type TournamentFlightData,
 } from "@/components/TournamentFlightsManager";
 import {
   TournamentFoursomesManager,
   type TournamentFoursomeData,
 } from "@/components/TournamentFoursomesManager";
+import {
+  TournamentTeamsManager,
+  type TournamentTeamData,
+} from "@/components/TournamentTeamsManager";
 
 interface CommentUser {
   id: string;
@@ -121,6 +126,7 @@ interface TournamentDetail {
   registeredUsers: RegisteredUser[];
   flights?: TournamentFlightData[];
   foursomes?: TournamentFoursomeData[];
+  teams?: TournamentTeamData[];
   flightLeaderboards?: Array<{
     flightId: string;
     flightName: string;
@@ -143,6 +149,23 @@ interface TournamentDetail {
       toPar: number | null;
     }>;
   }>;
+  leaderboard?: Array<{
+    rank: number;
+    userId: string;
+    fullName: string;
+    imageUrl: string | null;
+    handicapIndex: number | null;
+    total: number;
+    holesPlayed: number;
+    toPar: number | null;
+  }>;
+  playRound?: {
+    id: string;
+    slug: string;
+    status: string;
+  } | null;
+  scoringCompleted?: boolean;
+  isUpcoming?: boolean;
 }
 
 export default function TournamentDetailPage() {
@@ -672,7 +695,11 @@ export default function TournamentDetailPage() {
   }
 
   const now = new Date();
-  const isUpcoming = new Date(tournament.date + "T23:59:59") >= now;
+  const isUpcoming =
+    tournament.isUpcoming ??
+    (tournament.scoringCompleted
+      ? false
+      : new Date(tournament.date + "T23:59:59") >= now);
   const tournamentDateStr = tournament.date.split("T")[0];
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const canRecordWinners = tournamentDateStr <= todayStr; // true on tournament day or after
@@ -1374,6 +1401,18 @@ export default function TournamentDetailPage() {
             />
           ) : null}
 
+          {isAdmin && !isEditing && tournament.individualOrTeam === "team" ? (
+            <TournamentTeamsManager
+              tournamentId={tournament.slug ?? tournament.id}
+              teamSize={tournament.teamSize ?? 2}
+              registeredUsers={tournament.registeredUsers}
+              initialTeams={tournament.teams ?? []}
+              onTeamsChange={(teams) =>
+                setTournament((prev) => (prev ? { ...prev, teams } : prev))
+              }
+            />
+          ) : null}
+
           {isAdmin && tournament.scoringFormat === FLIGHTS_SCORING_FORMAT && !isEditing ? (
             <TournamentFlightsManager
               tournamentId={tournament.slug ?? tournament.id}
@@ -1510,8 +1549,16 @@ export default function TournamentDetailPage() {
             </div>
           )}
 
-          {(tournament.flightLeaderboards?.length ?? 0) > 0 ? (
+          {tournament.scoringCompleted &&
+          tournament.scoringFormat === FLIGHTS_SCORING_FORMAT &&
+          (tournament.flightLeaderboards?.length ?? 0) > 0 ? (
             <TournamentFlightLeaderboards flightLeaderboards={tournament.flightLeaderboards!} />
+          ) : null}
+
+          {tournament.scoringCompleted &&
+          tournament.scoringFormat !== FLIGHTS_SCORING_FORMAT &&
+          (tournament.leaderboard?.length ?? 0) > 0 ? (
+            <TournamentLeaderboard rows={tournament.leaderboard!} />
           ) : null}
 
           <div className="mt-8 border-t border-stone-200 pt-6">

@@ -3,6 +3,7 @@ import { getAuthSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { findMemberByIdOrSlug } from "@/lib/member-resolve";
 import { memberSlug, syncMemberSlug } from "@/lib/member-slug";
+import { isTournamentUpcoming } from "@/lib/tournament-status";
 import { resolveCourseSelection } from "@/lib/golf-course";
 
 /**
@@ -43,7 +44,11 @@ export async function GET(
       createdAt: true,
       tournamentRegistrations: {
         include: {
-          tournament: true,
+          tournament: {
+            include: {
+              playRound: { select: { status: true } },
+            },
+          },
         },
       },
     },
@@ -55,13 +60,13 @@ export async function GET(
 
   const isAdmin = session.user.role === "admin";
   const now = new Date();
-  const upcomingRegistrations = user.tournamentRegistrations.filter(
-    (r) => r.tournament.date >= now
+  const upcomingRegistrations = user.tournamentRegistrations.filter((r) =>
+    isTournamentUpcoming(r.tournament, r.tournament.playRound, now)
   );
 
   const hasRegistered = user.tournamentRegistrations.length >= 1;
   const hasPlayed = user.tournamentRegistrations.some(
-    (r) => r.tournament.date < now
+    (r) => !isTournamentUpcoming(r.tournament, r.tournament.playRound, now)
   );
 
   const badges: Array<{ id: string; name: string; earned: boolean; tournamentSlug?: string; tournamentName?: string }> = [

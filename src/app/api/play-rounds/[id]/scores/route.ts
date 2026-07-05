@@ -8,6 +8,7 @@ import {
   playRoundInclude,
 } from "@/lib/play-round-format";
 import { canSaveScoreForPlayer, getPlayRoundAccess } from "@/lib/play-round-access";
+import { maybeAutoCompletePlayRound } from "@/lib/play-round-complete";
 import { findPlayRoundByIdOrSlug } from "@/lib/play-round-slug";
 
 /**
@@ -109,6 +110,8 @@ export async function PATCH(
       where: { id: player.id },
       data: { scores },
     });
+
+    await maybeAutoCompletePlayRound(round.id);
 
     const updated = await prisma.playRound.findUnique({
       where: { id: round.id },

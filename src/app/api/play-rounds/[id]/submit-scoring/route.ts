@@ -6,6 +6,7 @@ import {
   formatPlayRoundResponse,
   playRoundInclude,
 } from "@/lib/play-round-format";
+import { maybeAutoCompletePlayRound } from "@/lib/play-round-complete";
 import { getPlayRoundAccess } from "@/lib/play-round-access";
 import { findPlayRoundByIdOrSlug } from "@/lib/play-round-slug";
 
@@ -81,6 +82,8 @@ export async function POST(
       where: { id: access.viewerPlayerId },
       data: { scoringSubmittedAt: new Date() },
     });
+
+    await maybeAutoCompletePlayRound(round.id);
 
     const updated = await prisma.playRound.findUnique({
       where: { id: round.id },

@@ -10,11 +10,15 @@ import { resolveCourseSelection } from "@/lib/golf-course";
 import { playRoundInclude } from "@/lib/play-round-format";
 import {
   buildFlightLeaderboards,
+  buildOverallLeaderboard,
   flightInclude,
   FLIGHTS_SCORING_FORMAT,
   formatTournamentFlights,
+  type TournamentLeaderboardRow,
 } from "@/lib/tournament-flights";
 import { foursomeInclude, formatTournamentFoursomes } from "@/lib/tournament-foursomes";
+import { teamInclude, formatTournamentTeams } from "@/lib/tournament-teams";
+import { isTournamentScoringCompleted, isTournamentUpcoming } from "@/lib/tournament-status";
 
 /**
  * GET /api/tournaments/[id] - Get a single tournament's details
@@ -60,6 +64,10 @@ export async function GET(
         include: foursomeInclude,
         orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
       },
+      teams: {
+        include: teamInclude,
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      },
       playRound: {
         select: {
           id: true,
@@ -97,15 +105,21 @@ export async function GET(
       : [];
 
   const foursomes = formatTournamentFoursomes(t.foursomes);
+  const teams = formatTournamentTeams(t.teams);
 
   let flightLeaderboards: Awaited<ReturnType<typeof buildFlightLeaderboards>> = [];
-  if (t.scoringFormat === FLIGHTS_SCORING_FORMAT && t.playRound && flights.length > 0) {
+  let leaderboard: TournamentLeaderboardRow[] = [];
+
+  if (t.playRound?.status === "completed") {
     const scoringRound = await prisma.playRound.findUnique({
       where: { id: t.playRound.id },
       include: playRoundInclude,
     });
     if (scoringRound) {
-      flightLeaderboards = await buildFlightLeaderboards(flights, scoringRound);
+      leaderboard = await buildOverallLeaderboard(scoringRound);
+      if (t.scoringFormat === FLIGHTS_SCORING_FORMAT && flights.length > 0) {
+        flightLeaderboards = await buildFlightLeaderboards(flights, scoringRound);
+      }
     }
   }
 
@@ -143,9 +157,13 @@ export async function GET(
       !!myRegistration &&
       !!t.playRound &&
       t.playRound.status === "in_progress",
+    scoringCompleted: isTournamentScoringCompleted(t.playRound),
+    isUpcoming: isTournamentUpcoming(t, t.playRound),
     flights,
     foursomes,
+    teams,
     flightLeaderboards,
+    leaderboard,
   });
 }
 

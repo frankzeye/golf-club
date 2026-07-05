@@ -5,6 +5,7 @@ import { tournamentSlug, findUniqueSlug } from "@/lib/tournament-slug";
 import { memberSlug } from "@/lib/member-slug";
 import { parseStartTime } from "@/lib/tournament-time";
 import { resolveCourseSelection } from "@/lib/golf-course";
+import { isTournamentPast } from "@/lib/tournament-status";
 
 /**
  * GET /api/tournaments - List all tournaments (past and upcoming)
@@ -18,6 +19,7 @@ export async function GET(request: NextRequest) {
     const tournaments = await prisma.tournament.findMany({
       orderBy: { date: "asc" },
       include: {
+        playRound: { select: { status: true } },
         registrations: {
           include: {
             user: {
@@ -30,9 +32,9 @@ export async function GET(request: NextRequest) {
 
     const now = new Date();
     const past = tournaments
-      .filter((t) => t.date < now)
+      .filter((t) => isTournamentPast(t, t.playRound, now))
       .sort((a, b) => b.date.getTime() - a.date.getTime());
-    const upcoming = tournaments.filter((t) => t.date >= now);
+    const upcoming = tournaments.filter((t) => !isTournamentPast(t, t.playRound, now));
 
     const format = (t: (typeof tournaments)[0]) => {
       const { registrations, ...rest } = t;
@@ -88,6 +90,8 @@ export async function GET(request: NextRequest) {
         registeredCount: registrations.length,
         isRegistered: userId ? registrations.some((r) => r.userId === userId) : false,
         registeredUsers,
+        playRoundStatus: t.playRound?.status ?? null,
+        scoringCompleted: t.playRound?.status === "completed",
       };
     };
 

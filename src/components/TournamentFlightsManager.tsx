@@ -492,3 +492,81 @@ export function TournamentFlightLeaderboards({ flightLeaderboards }: FlightLeade
     </div>
   );
 }
+
+export interface TournamentLeaderboardRowData {
+  rank: number;
+  userId: string;
+  fullName: string;
+  imageUrl: string | null;
+  handicapIndex: number | null;
+  total: number;
+  holesPlayed: number;
+  toPar: number | null;
+}
+
+function formatLeaderboardToPar(toPar: number | null) {
+  if (toPar == null) return "—";
+  if (toPar === 0) return "E";
+  return toPar > 0 ? `+${toPar}` : String(toPar);
+}
+
+export function TournamentLeaderboard({
+  rows,
+  holeCount,
+}: {
+  rows: TournamentLeaderboardRowData[];
+  holeCount?: number;
+}) {
+  if (rows.length === 0) return null;
+
+  const leader = rows.find((row) => row.rank === 1 && row.toPar != null);
+
+  return (
+    <div className="mt-8 border-t border-stone-200 pt-6">
+      <h2 className="text-sm font-semibold text-stone-900">Leaderboard</h2>
+      <p className="mt-1 text-sm text-stone-500">Final standings by score relative to par.</p>
+      <div className="mt-4 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
+        {leader ? (
+          <div className="border-b border-stone-200 bg-stone-50 px-4 py-3">
+            <p className="text-xs text-emerald-700">
+              Winner: {leader.fullName} ({formatLeaderboardToPar(leader.toPar)})
+            </p>
+          </div>
+        ) : null}
+        <div className="divide-y divide-stone-100">
+          {rows.map((row) => (
+            <div key={row.userId} className="flex items-center gap-3 px-4 py-3">
+              <span
+                className={`w-6 text-center text-sm font-bold ${
+                  row.rank === 1 && row.toPar != null ? "text-emerald-700" : "text-stone-400"
+                }`}
+              >
+                {row.toPar != null ? row.rank : "—"}
+              </span>
+              <AvatarWithSash
+                imageUrl={row.imageUrl}
+                alt={row.fullName}
+                size="sm"
+                fallback={row.fullName[0]?.toUpperCase() ?? "?"}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-stone-900">{row.fullName}</p>
+                <p className="text-xs text-stone-500">
+                  {row.handicapIndex != null ? `HCP ${row.handicapIndex}` : "No HCP"}
+                  {row.holesPlayed > 0
+                    ? ` · ${row.total} strokes · ${row.holesPlayed}${
+                        holeCount ? `/${holeCount}` : ""
+                      } holes`
+                    : " · No scores yet"}
+                </p>
+              </div>
+              <span className="text-lg font-bold text-stone-900">
+                {formatLeaderboardToPar(row.toPar)}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

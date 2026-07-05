@@ -2,11 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AvatarWithSash } from "@/components/AvatarWithSash";
-import {
-  DEFAULT_FOURSOME_START_HOLE,
-  MAX_FOURSOME_SIZE,
-  MAX_FOURSOME_START_HOLE,
-} from "@/lib/tournament-foursomes";
 
 interface RegisteredPlayer {
   id: string;
@@ -15,12 +10,10 @@ interface RegisteredPlayer {
   handicapIndex: number | null;
 }
 
-export interface TournamentFoursomeData {
+export interface TournamentTeamData {
   id: string;
   name: string;
   sortOrder: number;
-  startTime: string | null;
-  startHole: number;
   memberUserIds: string[];
   members: Array<{
     id: string;
@@ -30,49 +23,46 @@ export interface TournamentFoursomeData {
   }>;
 }
 
-interface FoursomeDraft {
+interface TeamDraft {
   clientId: string;
   name: string;
-  startTime: string;
-  startHole: number;
   userIds: string[];
 }
 
-interface TournamentFoursomesManagerProps {
+interface TournamentTeamsManagerProps {
   tournamentId: string;
+  teamSize: number;
   registeredUsers: RegisteredPlayer[];
-  initialFoursomes: TournamentFoursomeData[];
-  onFoursomesChange?: (foursomes: TournamentFoursomeData[]) => void;
+  initialTeams: TournamentTeamData[];
+  onTeamsChange?: (teams: TournamentTeamData[]) => void;
 }
 
-function toDraft(foursome: TournamentFoursomeData): FoursomeDraft {
+function toDraft(team: TournamentTeamData): TeamDraft {
   return {
-    clientId: foursome.id,
-    name: foursome.name,
-    startTime: foursome.startTime ?? "",
-    startHole: foursome.startHole ?? DEFAULT_FOURSOME_START_HOLE,
-    userIds: [...foursome.memberUserIds],
+    clientId: team.id,
+    name: team.name,
+    userIds: [...team.memberUserIds],
   };
 }
 
-function newDraft(index: number): FoursomeDraft {
+function newDraft(index: number): TeamDraft {
   return {
     clientId: `new-${Date.now()}-${index}`,
-    name: `Group ${index + 1}`,
-    startTime: "",
-    startHole: DEFAULT_FOURSOME_START_HOLE,
+    name: `Team ${index + 1}`,
     userIds: [],
   };
 }
 
-export function TournamentFoursomesManager({
+export function TournamentTeamsManager({
   tournamentId,
+  teamSize,
   registeredUsers,
-  initialFoursomes,
-  onFoursomesChange,
-}: TournamentFoursomesManagerProps) {
-  const [drafts, setDrafts] = useState<FoursomeDraft[]>(() =>
-    initialFoursomes.length > 0 ? initialFoursomes.map(toDraft) : [newDraft(0)]
+  initialTeams,
+  onTeamsChange,
+}: TournamentTeamsManagerProps) {
+  const maxTeamSize = teamSize === 4 ? 4 : 2;
+  const [drafts, setDrafts] = useState<TeamDraft[]>(() =>
+    initialTeams.length > 0 ? initialTeams.map(toDraft) : [newDraft(0)]
   );
   const [saving, setSaving] = useState(false);
   const [autoAssigning, setAutoAssigning] = useState(false);
@@ -80,10 +70,8 @@ export function TournamentFoursomesManager({
   const [success, setSuccess] = useState("");
 
   useEffect(() => {
-    setDrafts(
-      initialFoursomes.length > 0 ? initialFoursomes.map(toDraft) : [newDraft(0)]
-    );
-  }, [initialFoursomes]);
+    setDrafts(initialTeams.length > 0 ? initialTeams.map(toDraft) : [newDraft(0)]);
+  }, [initialTeams]);
 
   const assignedUserIds = useMemo(() => {
     const ids = new Set<string>();
@@ -99,32 +87,30 @@ export function TournamentFoursomesManager({
     return drafts.map((draft, index) => ({
       name: draft.name.trim(),
       sortOrder: index,
-      startTime: draft.startTime.trim() || null,
-      startHole: draft.startHole,
       userIds: draft.userIds,
     }));
   }, [drafts]);
 
-  async function saveFoursomes() {
+  async function saveTeams() {
     setSaving(true);
     setError("");
     setSuccess("");
     try {
-      const res = await fetch(`/api/tournaments/${tournamentId}/foursomes`, {
+      const res = await fetch(`/api/tournaments/${tournamentId}/teams`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ foursomes: buildPayload() }),
+        body: JSON.stringify({ teams: buildPayload() }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "Failed to save foursomes");
+        setError(data.error ?? "Failed to save teams");
         return;
       }
-      setDrafts(data.foursomes.map(toDraft));
-      onFoursomesChange?.(data.foursomes);
-      setSuccess("Foursomes saved.");
+      setDrafts(data.teams.map(toDraft));
+      onTeamsChange?.(data.teams);
+      setSuccess("Teams saved.");
     } catch {
-      setError("Failed to save foursomes");
+      setError("Failed to save teams");
     } finally {
       setSaving(false);
     }
@@ -135,37 +121,37 @@ export function TournamentFoursomesManager({
     setError("");
     setSuccess("");
     try {
-      const res = await fetch(`/api/tournaments/${tournamentId}/foursomes/auto-assign`, {
+      const res = await fetch(`/api/tournaments/${tournamentId}/teams/auto-assign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "Failed to auto-assign foursomes");
+        setError(data.error ?? "Failed to auto-assign teams");
         return;
       }
-      setDrafts(data.foursomes.map(toDraft));
-      onFoursomesChange?.(data.foursomes);
-      setSuccess("Foursomes assigned in groups of four.");
+      setDrafts(data.teams.map(toDraft));
+      onTeamsChange?.(data.teams);
+      setSuccess(`Teams assigned in groups of ${maxTeamSize}.`);
     } catch {
-      setError("Failed to auto-assign foursomes");
+      setError("Failed to auto-assign teams");
     } finally {
       setAutoAssigning(false);
     }
   }
 
-  function togglePlayer(foursomeClientId: string, userId: string) {
+  function togglePlayer(teamClientId: string, userId: string) {
     setDrafts((prev) =>
       prev.map((draft) => {
-        if (draft.clientId !== foursomeClientId) {
+        if (draft.clientId !== teamClientId) {
           return { ...draft, userIds: draft.userIds.filter((id) => id !== userId) };
         }
         const has = draft.userIds.includes(userId);
         if (has) {
           return { ...draft, userIds: draft.userIds.filter((id) => id !== userId) };
         }
-        if (draft.userIds.length >= MAX_FOURSOME_SIZE) return draft;
+        if (draft.userIds.length >= maxTeamSize) return draft;
         return { ...draft, userIds: [...draft.userIds, userId] };
       })
     );
@@ -174,9 +160,9 @@ export function TournamentFoursomesManager({
   if (registeredUsers.length === 0) {
     return (
       <div className="mt-8 border-t border-stone-200 pt-6">
-        <h2 className="text-sm font-semibold text-stone-900">Foursomes</h2>
+        <h2 className="text-sm font-semibold text-stone-900">Teams</h2>
         <p className="mt-2 text-sm text-stone-500">
-          Register players before creating foursomes.
+          Register players before creating teams.
         </p>
       </div>
     );
@@ -186,12 +172,11 @@ export function TournamentFoursomesManager({
     <div className="mt-8 border-t border-stone-200 pt-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-sm font-semibold text-stone-900">Foursomes</h2>
+          <h2 className="text-sm font-semibold text-stone-900">Teams</h2>
           <p className="mt-1 text-sm text-stone-500">
-            Schedule who plays together on the course — tee times and starting holes.
-            Foursomes are independent of teams; players on different teams can share a
-            foursome. When scoring starts, each player can enter scores for everyone in
-            their foursome.
+            Assign registered players to teams for team scoring and prizes. Teams are
+            separate from foursomes — teammates can tee off in the same or different
+            groups.
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
@@ -200,7 +185,7 @@ export function TournamentFoursomesManager({
             onClick={() => setDrafts((prev) => [...prev, newDraft(prev.length)])}
             className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50"
           >
-            Add foursome
+            Add team
           </button>
           <button
             type="button"
@@ -208,15 +193,15 @@ export function TournamentFoursomesManager({
             disabled={autoAssigning || saving}
             className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:opacity-50"
           >
-            {autoAssigning ? "Assigning…" : "Auto-assign groups of 4"}
+            {autoAssigning ? "Assigning…" : `Auto-assign teams of ${maxTeamSize}`}
           </button>
           <button
             type="button"
-            onClick={saveFoursomes}
+            onClick={saveTeams}
             disabled={saving || autoAssigning}
             className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
           >
-            {saving ? "Saving…" : "Save foursomes"}
+            {saving ? "Saving…" : "Save teams"}
           </button>
         </div>
       </div>
@@ -235,7 +220,7 @@ export function TournamentFoursomesManager({
       {unassignedUsers.length > 0 ? (
         <p className="mt-3 text-sm text-amber-700">
           {unassignedUsers.length} registered{" "}
-          {unassignedUsers.length === 1 ? "player" : "players"} not assigned to a foursome.
+          {unassignedUsers.length === 1 ? "player" : "players"} not assigned to a team.
         </p>
       ) : null}
 
@@ -245,10 +230,10 @@ export function TournamentFoursomesManager({
             key={draft.clientId}
             className="rounded-xl border border-stone-200 bg-stone-50/60 p-4"
           >
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-              <div className="min-w-[10rem] flex-1">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="flex-1">
                 <label className="block text-xs font-medium uppercase tracking-wide text-stone-500">
-                  Group name
+                  Team name
                 </label>
                 <input
                   type="text"
@@ -264,52 +249,6 @@ export function TournamentFoursomesManager({
                   }
                   className="mt-1 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900"
                 />
-              </div>
-              <div className="w-full sm:w-40">
-                <label className="block text-xs font-medium uppercase tracking-wide text-stone-500">
-                  Tee time
-                </label>
-                <input
-                  type="time"
-                  value={draft.startTime}
-                  onChange={(e) =>
-                    setDrafts((prev) =>
-                      prev.map((item) =>
-                        item.clientId === draft.clientId
-                          ? { ...item, startTime: e.target.value }
-                          : item
-                      )
-                    )
-                  }
-                  className="mt-1 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900"
-                />
-              </div>
-              <div className="w-full sm:w-32">
-                <label className="block text-xs font-medium uppercase tracking-wide text-stone-500">
-                  Start hole
-                </label>
-                <select
-                  value={draft.startHole}
-                  onChange={(e) =>
-                    setDrafts((prev) =>
-                      prev.map((item) =>
-                        item.clientId === draft.clientId
-                          ? { ...item, startHole: Number(e.target.value) }
-                          : item
-                      )
-                    )
-                  }
-                  className="mt-1 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900"
-                >
-                  {Array.from({ length: MAX_FOURSOME_START_HOLE }, (_, index) => {
-                    const hole = index + 1;
-                    return (
-                      <option key={hole} value={hole}>
-                        Hole {hole}
-                      </option>
-                    );
-                  })}
-                </select>
               </div>
               {drafts.length > 1 ? (
                 <button
@@ -327,20 +266,20 @@ export function TournamentFoursomesManager({
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
               {registeredUsers.map((player) => {
                 const selected = draft.userIds.includes(player.id);
-                const inOtherFoursome =
+                const inOtherTeam =
                   !selected &&
                   drafts.some(
                     (other) =>
                       other.clientId !== draft.clientId && other.userIds.includes(player.id)
                   );
-                const groupFull = !selected && draft.userIds.length >= MAX_FOURSOME_SIZE;
+                const teamFull = !selected && draft.userIds.length >= maxTeamSize;
                 return (
                   <label
                     key={player.id}
                     className={`flex items-center gap-3 rounded-lg border px-3 py-2 ${
                       selected
                         ? "border-emerald-300 bg-emerald-50"
-                        : inOtherFoursome || groupFull
+                        : inOtherTeam || teamFull
                           ? "border-stone-200 bg-stone-100 opacity-50"
                           : "border-stone-200 bg-white"
                     }`}
@@ -348,7 +287,7 @@ export function TournamentFoursomesManager({
                     <input
                       type="checkbox"
                       checked={selected}
-                      disabled={inOtherFoursome || groupFull}
+                      disabled={inOtherTeam || teamFull}
                       onChange={() => togglePlayer(draft.clientId, player.id)}
                       className="rounded border-stone-300 text-emerald-600 focus:ring-emerald-500"
                     />
@@ -370,7 +309,7 @@ export function TournamentFoursomesManager({
             </div>
 
             <p className="mt-3 text-xs text-stone-500">
-              {draft.userIds.length} of {MAX_FOURSOME_SIZE} players in this foursome
+              {draft.userIds.length} of {maxTeamSize} players on this team
             </p>
           </div>
         ))}

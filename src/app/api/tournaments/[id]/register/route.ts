@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { findTournamentByIdOrSlug } from "@/lib/tournament-resolve";
+import { isTournamentPast } from "@/lib/tournament-status";
 
 /**
  * POST /api/tournaments/[id]/register - Register for a tournament
@@ -24,14 +25,17 @@ export async function POST(
 
   const tournamentWithCount = await prisma.tournament.findUnique({
     where: { id: tournament.id },
-    include: { _count: { select: { registrations: true } } },
+    include: {
+      _count: { select: { registrations: true } },
+      playRound: { select: { status: true } },
+    },
   });
   if (!tournamentWithCount) {
     return NextResponse.json({ error: "Tournament not found" }, { status: 404 });
   }
   const tournamentId = tournamentWithCount.id;
 
-  if (tournamentWithCount.date < new Date()) {
+  if (isTournamentPast(tournamentWithCount, tournamentWithCount.playRound)) {
     return NextResponse.json(
       { error: "Cannot register for past tournaments" },
       { status: 400 }
@@ -101,7 +105,15 @@ export async function DELETE(
     return NextResponse.json({ error: "Tournament not found" }, { status: 404 });
   }
 
-  if (tournament.date < new Date()) {
+  const tournamentWithRound = await prisma.tournament.findUnique({
+    where: { id: tournament.id },
+    include: { playRound: { select: { status: true } } },
+  });
+  if (!tournamentWithRound) {
+    return NextResponse.json({ error: "Tournament not found" }, { status: 404 });
+  }
+
+  if (isTournamentPast(tournamentWithRound, tournamentWithRound.playRound)) {
     return NextResponse.json(
       { error: "Cannot unregister from past tournaments" },
       { status: 400 }

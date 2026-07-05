@@ -180,6 +180,71 @@ type PlayRoundPlayerForLeaderboard = {
   };
 };
 
+function mapPlayRoundPlayersForLeaderboard(
+  players: PlayRoundPlayerForLeaderboard[]
+) {
+  return players.map((player) => {
+    const scores = parsePlayerScores(player.scores);
+    const user = formatFlightMember({
+      ...player.user,
+      handicapIndex: player.handicapIndex,
+    });
+    return {
+      id: player.id,
+      userId: player.userId,
+      slug: user.slug,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      fullName: user.fullName,
+      imageUrl: user.imageUrl,
+      handicapIndex: player.handicapIndex,
+      scgaOfficial: user.scgaOfficial,
+      scores,
+      total: Object.values(scores).reduce((sum, n) => sum + n, 0),
+      holesPlayed: Object.keys(scores).length,
+    };
+  });
+}
+
+export type TournamentLeaderboardRow = {
+  rank: number;
+  userId: string;
+  fullName: string;
+  imageUrl: string | null;
+  handicapIndex: number | null;
+  total: number;
+  holesPlayed: number;
+  toPar: number | null;
+};
+
+export async function buildOverallLeaderboard(
+  playRound: {
+    courseId: string | null;
+    holeCount: number;
+    players: PlayRoundPlayerForLeaderboard[];
+  }
+): Promise<TournamentLeaderboardRow[]> {
+  const scorecard = await loadPlayRoundScorecard(
+    playRound.courseId,
+    playRound.holeCount,
+    null
+  );
+
+  const players = mapPlayRoundPlayersForLeaderboard(playRound.players);
+  const rows = buildLeaderboard(players, scorecard as ScorecardHole[]);
+
+  return rows.map((row) => ({
+    rank: row.toPar != null ? row.rank : 0,
+    userId: row.player.userId,
+    fullName: row.player.fullName,
+    imageUrl: row.player.imageUrl,
+    handicapIndex: row.player.handicapIndex,
+    total: row.total,
+    holesPlayed: row.holesPlayed,
+    toPar: row.toPar,
+  }));
+}
+
 export async function buildFlightLeaderboards(
   flights: ReturnType<typeof formatTournamentFlights>,
   playRound: {
@@ -195,30 +260,10 @@ export async function buildFlightLeaderboards(
   );
 
   const playerByUserId = new Map(
-    playRound.players.map((player) => {
-      const scores = parsePlayerScores(player.scores);
-      const user = formatFlightMember({
-        ...player.user,
-        handicapIndex: player.handicapIndex,
-      });
-      return [
-        player.userId,
-        {
-          id: player.id,
-          userId: player.userId,
-          slug: user.slug,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          fullName: user.fullName,
-          imageUrl: user.imageUrl,
-          handicapIndex: player.handicapIndex,
-          scgaOfficial: user.scgaOfficial,
-          scores,
-          total: Object.values(scores).reduce((sum, n) => sum + n, 0),
-          holesPlayed: Object.keys(scores).length,
-        },
-      ];
-    })
+    mapPlayRoundPlayersForLeaderboard(playRound.players).map((player) => [
+      player.userId,
+      player,
+    ])
   );
 
   return flights.map((flight) => {
