@@ -394,33 +394,68 @@ export function TournamentFlightsManager({
   );
 }
 
-interface FlightLeaderboardProps {
-  flightLeaderboards: Array<{
-    flightId: string;
-    flightName: string;
-    minHandicap: number | null;
-    maxHandicap: number | null;
-    leader: {
-      userId: string;
-      fullName: string;
-      toPar: number | null;
-      total: number;
-    } | null;
-    rows: Array<{
-      rank: number;
-      userId: string;
-      fullName: string;
-      imageUrl: string | null;
-      handicapIndex: number | null;
-      total: number;
-      holesPlayed: number;
-      toPar: number | null;
-    }>;
+interface FlightLeaderboardSection {
+  flightId: string;
+  flightName: string;
+  minHandicap: number | null;
+  maxHandicap: number | null;
+  leader: {
+    userId: string;
+    fullName: string;
+    toPar: number | null;
+    total: number;
+  } | null;
+  rows: Array<{
+    rank: number;
+    userId: string;
+    fullName: string;
+    imageUrl: string | null;
+    handicapIndex: number | null;
+    total: number;
+    holesPlayed: number;
+    toPar: number | null;
   }>;
 }
 
+interface FlightLeaderboardProps {
+  flightLeaderboards: {
+    net: FlightLeaderboardSection[];
+    gross: FlightLeaderboardSection[];
+  };
+}
+
+function LeaderboardScoringToggle({
+  mode,
+  onChange,
+}: {
+  mode: "net" | "gross";
+  onChange: (mode: "net" | "gross") => void;
+}) {
+  return (
+    <div className="inline-flex rounded-lg border border-stone-200 bg-stone-50 p-0.5">
+      {(["net", "gross"] as const).map((option) => (
+        <button
+          key={option}
+          type="button"
+          onClick={() => onChange(option)}
+          className={`rounded-md px-3 py-1.5 text-xs font-medium capitalize ${
+            mode === option
+              ? "bg-white text-stone-900 shadow-sm"
+              : "text-stone-500 hover:text-stone-700"
+          }`}
+        >
+          {option}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function TournamentFlightLeaderboards({ flightLeaderboards }: FlightLeaderboardProps) {
-  if (flightLeaderboards.length === 0) return null;
+  const [scoringMode, setScoringMode] = useState<"net" | "gross">("net");
+  const sections = flightLeaderboards[scoringMode];
+
+  if (sections.length === 0) return null;
 
   function formatToPar(toPar: number | null) {
     if (toPar == null) return "—";
@@ -430,12 +465,17 @@ export function TournamentFlightLeaderboards({ flightLeaderboards }: FlightLeade
 
   return (
     <div className="mt-8 border-t border-stone-200 pt-6">
-      <h2 className="text-sm font-semibold text-stone-900">Flight Leaderboards</h2>
-      <p className="mt-1 text-sm text-stone-500">
-        Each flight has its own winner based on score relative to par.
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold text-stone-900">Flight Leaderboards</h2>
+          <p className="mt-1 text-sm text-stone-500">
+            Each flight has its own winner based on score relative to par.
+          </p>
+        </div>
+        <LeaderboardScoringToggle mode={scoringMode} onChange={setScoringMode} />
+      </div>
       <div className="mt-4 space-y-4">
-        {flightLeaderboards.map((flight) => (
+        {sections.map((flight) => (
           <div
             key={flight.flightId}
             className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm"
@@ -476,7 +516,7 @@ export function TournamentFlightLeaderboards({ flightLeaderboards }: FlightLeade
                     <p className="text-xs text-stone-500">
                       {row.handicapIndex != null ? `HCP ${row.handicapIndex}` : "No HCP"}
                       {row.holesPlayed > 0
-                        ? ` · ${row.total} strokes · ${row.holesPlayed} holes`
+                        ? ` · ${row.total} ${scoringMode} strokes · ${row.holesPlayed} holes`
                         : " · No scores yet"}
                     </p>
                   </div>
@@ -511,20 +551,31 @@ function formatLeaderboardToPar(toPar: number | null) {
 }
 
 export function TournamentLeaderboard({
-  rows,
+  leaderboards,
   holeCount,
 }: {
-  rows: TournamentLeaderboardRowData[];
+  leaderboards: {
+    net: TournamentLeaderboardRowData[];
+    gross: TournamentLeaderboardRowData[];
+  };
   holeCount?: number;
 }) {
+  const [scoringMode, setScoringMode] = useState<"net" | "gross">("net");
+  const rows = leaderboards[scoringMode];
+
   if (rows.length === 0) return null;
 
   const leader = rows.find((row) => row.rank === 1 && row.toPar != null);
 
   return (
     <div className="mt-8 border-t border-stone-200 pt-6">
-      <h2 className="text-sm font-semibold text-stone-900">Leaderboard</h2>
-      <p className="mt-1 text-sm text-stone-500">Final standings by score relative to par.</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold text-stone-900">Leaderboard</h2>
+          <p className="mt-1 text-sm text-stone-500">Final standings by score relative to par.</p>
+        </div>
+        <LeaderboardScoringToggle mode={scoringMode} onChange={setScoringMode} />
+      </div>
       <div className="mt-4 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
         {leader ? (
           <div className="border-b border-stone-200 bg-stone-50 px-4 py-3">
@@ -554,7 +605,7 @@ export function TournamentLeaderboard({
                 <p className="text-xs text-stone-500">
                   {row.handicapIndex != null ? `HCP ${row.handicapIndex}` : "No HCP"}
                   {row.holesPlayed > 0
-                    ? ` · ${row.total} strokes · ${row.holesPlayed}${
+                    ? ` · ${row.total} ${scoringMode} strokes · ${row.holesPlayed}${
                         holeCount ? `/${holeCount}` : ""
                       } holes`
                     : " · No scores yet"}
@@ -584,26 +635,38 @@ export interface TournamentTeamLeaderboardRowData {
 }
 
 export function TournamentTeamLeaderboard({
-  rows,
+  leaderboards,
   holeCount,
 }: {
-  rows: TournamentTeamLeaderboardRowData[];
+  leaderboards: {
+    net: TournamentTeamLeaderboardRowData[];
+    gross: TournamentTeamLeaderboardRowData[];
+  };
   holeCount?: number;
 }) {
+  const [scoringMode, setScoringMode] = useState<"net" | "gross">("net");
+  const rows = leaderboards[scoringMode];
+
   if (rows.length === 0) return null;
 
   const leader = rows.find((row) =>
     row.isStableford ? row.rank === 1 && row.total > 0 : row.rank === 1 && row.toPar != null
   );
+  const isStableford = rows[0]?.isStableford ?? false;
 
   return (
     <div className="mt-8 border-t border-stone-200 pt-6">
-      <h2 className="text-sm font-semibold text-stone-900">Team Leaderboard</h2>
-      <p className="mt-1 text-sm text-stone-500">
-        {rows[0]?.isStableford
-          ? "Final standings by combined Stableford points."
-          : "Final standings by combined team score relative to par."}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold text-stone-900">Team Leaderboard</h2>
+          <p className="mt-1 text-sm text-stone-500">
+            {isStableford
+              ? "Final standings by combined Stableford points."
+              : "Final standings by combined team score relative to par."}
+          </p>
+        </div>
+        <LeaderboardScoringToggle mode={scoringMode} onChange={setScoringMode} />
+      </div>
       <div className="mt-4 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
         {leader ? (
           <div className="border-b border-stone-200 bg-stone-50 px-4 py-3">
@@ -635,7 +698,7 @@ export function TournamentTeamLeaderboard({
                     {hasScore
                       ? row.isStableford
                         ? ` · ${row.total} pts`
-                        : ` · ${row.total} strokes · ${row.holesPlayed}${
+                        : ` · ${row.total} ${scoringMode} strokes · ${row.holesPlayed}${
                             holeCount ? `/${holeCount}` : ""
                           } holes`
                       : " · No scores yet"}

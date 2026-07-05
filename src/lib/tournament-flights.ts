@@ -2,6 +2,7 @@ import { memberSlug } from "@/lib/member-slug";
 import {
   buildLeaderboard,
   parsePlayerScores,
+  type LeaderboardScoringMode,
   type ScorecardHole,
 } from "@/lib/course-scorecard";
 import { loadPlayRoundScorecard } from "@/lib/load-play-round-scorecard";
@@ -222,7 +223,8 @@ export async function buildOverallLeaderboard(
     courseId: string | null;
     holeCount: number;
     players: PlayRoundPlayerForLeaderboard[];
-  }
+  },
+  scoringMode: LeaderboardScoringMode = "net"
 ): Promise<TournamentLeaderboardRow[]> {
   const scorecard = await loadPlayRoundScorecard(
     playRound.courseId,
@@ -231,7 +233,7 @@ export async function buildOverallLeaderboard(
   );
 
   const players = mapPlayRoundPlayersForLeaderboard(playRound.players);
-  const rows = buildLeaderboard(players, scorecard as ScorecardHole[]);
+  const rows = buildLeaderboard(players, scorecard as ScorecardHole[], scoringMode);
 
   return rows.map((row) => ({
     rank: row.toPar != null ? row.rank : 0,
@@ -245,13 +247,28 @@ export async function buildOverallLeaderboard(
   }));
 }
 
+export async function buildOverallLeaderboards(
+  playRound: {
+    courseId: string | null;
+    holeCount: number;
+    players: PlayRoundPlayerForLeaderboard[];
+  }
+) {
+  const [net, gross] = await Promise.all([
+    buildOverallLeaderboard(playRound, "net"),
+    buildOverallLeaderboard(playRound, "gross"),
+  ]);
+  return { net, gross };
+}
+
 export async function buildFlightLeaderboards(
   flights: ReturnType<typeof formatTournamentFlights>,
   playRound: {
     courseId: string | null;
     holeCount: number;
     players: PlayRoundPlayerForLeaderboard[];
-  }
+  },
+  scoringMode: LeaderboardScoringMode = "net"
 ) {
   const scorecard = await loadPlayRoundScorecard(
     playRound.courseId,
@@ -271,7 +288,7 @@ export async function buildFlightLeaderboards(
       .map((userId) => playerByUserId.get(userId))
       .filter((p): p is NonNullable<typeof p> => p != null);
 
-    const rows = buildLeaderboard(players, scorecard as ScorecardHole[]);
+    const rows = buildLeaderboard(players, scorecard as ScorecardHole[], scoringMode);
     const leader = rows.find((row) => row.rank === 1 && row.toPar != null);
 
     return {
@@ -299,4 +316,19 @@ export async function buildFlightLeaderboards(
       })),
     };
   });
+}
+
+export async function buildFlightLeaderboardsByMode(
+  flights: ReturnType<typeof formatTournamentFlights>,
+  playRound: {
+    courseId: string | null;
+    holeCount: number;
+    players: PlayRoundPlayerForLeaderboard[];
+  }
+) {
+  const [net, gross] = await Promise.all([
+    buildFlightLeaderboards(flights, playRound, "net"),
+    buildFlightLeaderboards(flights, playRound, "gross"),
+  ]);
+  return { net, gross };
 }

@@ -9,8 +9,8 @@ import { parseStartTime } from "@/lib/tournament-time";
 import { resolveCourseSelection } from "@/lib/golf-course";
 import { playRoundInclude } from "@/lib/play-round-format";
 import {
-  buildFlightLeaderboards,
-  buildOverallLeaderboard,
+  buildFlightLeaderboardsByMode,
+  buildOverallLeaderboards,
   flightInclude,
   FLIGHTS_SCORING_FORMAT,
   formatTournamentFlights,
@@ -19,7 +19,7 @@ import {
 import { foursomeInclude, formatTournamentFoursomes } from "@/lib/tournament-foursomes";
 import { teamInclude, formatTournamentTeams } from "@/lib/tournament-teams";
 import {
-  buildOverallTeamLeaderboard,
+  buildOverallTeamLeaderboards,
   type TournamentTeamLeaderboardRow,
 } from "@/lib/tournament-leaderboard";
 import { isTournamentScoringCompleted, isTournamentUpcoming } from "@/lib/tournament-status";
@@ -111,9 +111,13 @@ export async function GET(
   const foursomes = formatTournamentFoursomes(t.foursomes);
   const teams = formatTournamentTeams(t.teams);
 
-  let flightLeaderboards: Awaited<ReturnType<typeof buildFlightLeaderboards>> = [];
-  let leaderboard: TournamentLeaderboardRow[] = [];
-  let teamLeaderboard: TournamentTeamLeaderboardRow[] = [];
+  let flightLeaderboards: Awaited<ReturnType<typeof buildFlightLeaderboardsByMode>> | null = null;
+  let leaderboard: { net: TournamentLeaderboardRow[]; gross: TournamentLeaderboardRow[] } | null =
+    null;
+  let teamLeaderboard: {
+    net: TournamentTeamLeaderboardRow[];
+    gross: TournamentTeamLeaderboardRow[];
+  } | null = null;
 
   if (t.playRound?.status === "completed") {
     const scoringRound = await prisma.playRound.findUnique({
@@ -122,16 +126,16 @@ export async function GET(
     });
     if (scoringRound) {
       if (t.individualOrTeam === "team" && teams.length > 0) {
-        teamLeaderboard = await buildOverallTeamLeaderboard(
+        teamLeaderboard = await buildOverallTeamLeaderboards(
           teams,
           scoringRound,
           t.scoringFormat
         );
       } else {
-        leaderboard = await buildOverallLeaderboard(scoringRound);
+        leaderboard = await buildOverallLeaderboards(scoringRound);
       }
       if (t.scoringFormat === FLIGHTS_SCORING_FORMAT && flights.length > 0) {
-        flightLeaderboards = await buildFlightLeaderboards(flights, scoringRound);
+        flightLeaderboards = await buildFlightLeaderboardsByMode(flights, scoringRound);
       }
     }
   }

@@ -128,18 +128,54 @@ interface TournamentDetail {
   flights?: TournamentFlightData[];
   foursomes?: TournamentFoursomeData[];
   teams?: TournamentTeamData[];
-  flightLeaderboards?: Array<{
-    flightId: string;
-    flightName: string;
-    minHandicap: number | null;
-    maxHandicap: number | null;
-    leader: {
-      userId: string;
-      fullName: string;
-      toPar: number | null;
-      total: number;
-    } | null;
-    rows: Array<{
+  flightLeaderboards?: {
+    net: Array<{
+      flightId: string;
+      flightName: string;
+      minHandicap: number | null;
+      maxHandicap: number | null;
+      leader: {
+        userId: string;
+        fullName: string;
+        toPar: number | null;
+        total: number;
+      } | null;
+      rows: Array<{
+        rank: number;
+        userId: string;
+        fullName: string;
+        imageUrl: string | null;
+        handicapIndex: number | null;
+        total: number;
+        holesPlayed: number;
+        toPar: number | null;
+      }>;
+    }>;
+    gross: Array<{
+      flightId: string;
+      flightName: string;
+      minHandicap: number | null;
+      maxHandicap: number | null;
+      leader: {
+        userId: string;
+        fullName: string;
+        toPar: number | null;
+        total: number;
+      } | null;
+      rows: Array<{
+        rank: number;
+        userId: string;
+        fullName: string;
+        imageUrl: string | null;
+        handicapIndex: number | null;
+        total: number;
+        holesPlayed: number;
+        toPar: number | null;
+      }>;
+    }>;
+  };
+  leaderboard?: {
+    net: Array<{
       rank: number;
       userId: string;
       fullName: string;
@@ -149,28 +185,41 @@ interface TournamentDetail {
       holesPlayed: number;
       toPar: number | null;
     }>;
-  }>;
-  leaderboard?: Array<{
-    rank: number;
-    userId: string;
-    fullName: string;
-    imageUrl: string | null;
-    handicapIndex: number | null;
-    total: number;
-    holesPlayed: number;
-    toPar: number | null;
-  }>;
-  teamLeaderboard?: Array<{
-    rank: number;
-    teamId: string;
-    teamName: string;
-    memberNames: string;
-    memberCount: number;
-    total: number;
-    holesPlayed: number;
-    toPar: number | null;
-    isStableford: boolean;
-  }>;
+    gross: Array<{
+      rank: number;
+      userId: string;
+      fullName: string;
+      imageUrl: string | null;
+      handicapIndex: number | null;
+      total: number;
+      holesPlayed: number;
+      toPar: number | null;
+    }>;
+  };
+  teamLeaderboard?: {
+    net: Array<{
+      rank: number;
+      teamId: string;
+      teamName: string;
+      memberNames: string;
+      memberCount: number;
+      total: number;
+      holesPlayed: number;
+      toPar: number | null;
+      isStableford: boolean;
+    }>;
+    gross: Array<{
+      rank: number;
+      teamId: string;
+      teamName: string;
+      memberNames: string;
+      memberCount: number;
+      total: number;
+      holesPlayed: number;
+      toPar: number | null;
+      isStableford: boolean;
+    }>;
+  };
   playRound?: {
     id: string;
     slug: string;
@@ -1563,22 +1612,28 @@ export default function TournamentDetailPage() {
 
           {tournament.scoringCompleted &&
           tournament.scoringFormat === FLIGHTS_SCORING_FORMAT &&
-          (tournament.flightLeaderboards?.length ?? 0) > 0 ? (
-            <TournamentFlightLeaderboards flightLeaderboards={tournament.flightLeaderboards!} />
+          tournament.flightLeaderboards &&
+          (tournament.flightLeaderboards.net.length > 0 ||
+            tournament.flightLeaderboards.gross.length > 0) ? (
+            <TournamentFlightLeaderboards flightLeaderboards={tournament.flightLeaderboards} />
           ) : null}
 
           {tournament.scoringCompleted &&
           tournament.scoringFormat !== FLIGHTS_SCORING_FORMAT &&
           tournament.individualOrTeam === "team" &&
-          (tournament.teamLeaderboard?.length ?? 0) > 0 ? (
-            <TournamentTeamLeaderboard rows={tournament.teamLeaderboard!} />
+          tournament.teamLeaderboard &&
+          (tournament.teamLeaderboard.net.length > 0 ||
+            tournament.teamLeaderboard.gross.length > 0) ? (
+            <TournamentTeamLeaderboard leaderboards={tournament.teamLeaderboard} />
           ) : null}
 
           {tournament.scoringCompleted &&
           tournament.scoringFormat !== FLIGHTS_SCORING_FORMAT &&
           tournament.individualOrTeam !== "team" &&
-          (tournament.leaderboard?.length ?? 0) > 0 ? (
-            <TournamentLeaderboard rows={tournament.leaderboard!} />
+          tournament.leaderboard &&
+          (tournament.leaderboard.net.length > 0 ||
+            tournament.leaderboard.gross.length > 0) ? (
+            <TournamentLeaderboard leaderboards={tournament.leaderboard} />
           ) : null}
 
           <div className="mt-8 border-t border-stone-200 pt-6">

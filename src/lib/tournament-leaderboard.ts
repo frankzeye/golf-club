@@ -1,5 +1,9 @@
 import {
   playerCumulativeToPar,
+  playerNetTotal,
+  playerNetCumulativeToPar,
+  playerStablefordPoints,
+  type LeaderboardScoringMode,
   type ScorecardHole,
 } from "@/lib/course-scorecard";
 import { loadPlayRoundScorecard } from "@/lib/load-play-round-scorecard";
@@ -8,20 +12,6 @@ import {
   mapPlayRoundPlayersForLeaderboard,
   type PlayRoundPlayerForLeaderboard,
 } from "@/lib/tournament-flights";
-
-function playerStablefordPoints(
-  scores: Record<string, number>,
-  scorecard: ScorecardHole[]
-): number {
-  let points = 0;
-  for (const hole of scorecard) {
-    const strokes = scores[String(hole.hole)];
-    if (strokes != null) {
-      points += Math.max(0, 2 + hole.par - strokes);
-    }
-  }
-  return points;
-}
 
 export type TournamentTeamLeaderboardRow = {
   rank: number;
@@ -73,7 +63,8 @@ export async function buildOverallTeamLeaderboard(
     holeCount: number;
     players: PlayRoundPlayerForLeaderboard[];
   },
-  scoringFormat: string
+  scoringFormat: string,
+  scoringMode: LeaderboardScoringMode = "net"
 ): Promise<TournamentTeamLeaderboardRow[]> {
   if (teams.length === 0) return [];
 
@@ -100,7 +91,14 @@ export async function buildOverallTeamLeaderboard(
 
     if (isStableford) {
       const total = members.reduce(
-        (sum, player) => sum + playerStablefordPoints(player.scores, scorecard),
+        (sum, player) =>
+          sum +
+          playerStablefordPoints(
+            player.scores,
+            scorecard as ScorecardHole[],
+            player.handicapIndex,
+            scoringMode
+          ),
         0
       );
       const holesPlayed =
@@ -118,12 +116,26 @@ export async function buildOverallTeamLeaderboard(
       };
     }
 
-    const total = members.reduce((sum, player) => sum + player.total, 0);
+    const total = members.reduce(
+      (sum, player) =>
+        sum +
+        (scoringMode === "net"
+          ? playerNetTotal(player.scores, scorecard as ScorecardHole[], player.handicapIndex)
+          : player.total),
+      0
+    );
 
     let toParSum = 0;
     let hasScore = false;
     for (const player of members) {
-      const toPar = playerCumulativeToPar(player.scores, scorecard);
+      const toPar =
+        scoringMode === "net"
+          ? playerNetCumulativeToPar(
+              player.scores,
+              scorecard as ScorecardHole[],
+              player.handicapIndex
+            )
+          : playerCumulativeToPar(player.scores, scorecard as ScorecardHole[]);
       if (toPar != null) {
         toParSum += toPar;
         hasScore = true;
@@ -169,4 +181,20 @@ export async function buildOverallTeamLeaderboard(
     toPar: row.toPar,
     isStableford: row.isStableford,
   }));
+}
+
+export async function buildOverallTeamLeaderboards(
+  teams: ReturnType<typeof formatTournamentTeams>,
+  playRound: {
+    courseId: string | null;
+    holeCount: number;
+    players: PlayRoundPlayerForLeaderboard[];
+  },
+  scoringFormat: string
+) {
+  const [net, gross] = await Promise.all([
+    buildOverallTeamLeaderboard(teams, playRound, scoringFormat, "net"),
+    buildOverallTeamLeaderboard(teams, playRound, scoringFormat, "gross"),
+  ]);
+  return { net, gross };
 }

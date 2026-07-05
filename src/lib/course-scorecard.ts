@@ -121,6 +121,57 @@ export function formatRelativeToPar(diff: number): string {
   return diff > 0 ? `+${diff}` : String(diff);
 }
 
+/** Rounded handicap index used for stroke allocation on the scorecard. */
+export function playingHandicap(handicapIndex: number | null | undefined): number {
+  if (handicapIndex == null || !Number.isFinite(handicapIndex) || handicapIndex <= 0) {
+    return 0;
+  }
+  return Math.round(handicapIndex);
+}
+
+function strokeIndexForHole(hole: ScorecardHole): number {
+  if (hole.handicap != null && Number.isInteger(hole.handicap) && hole.handicap >= 1) {
+    return hole.handicap;
+  }
+  return hole.hole;
+}
+
+function strokeRanksForScorecard(scorecard: ScorecardHole[]): Map<number, number> {
+  const sorted = scorecard
+    .map((entry) => ({
+      hole: entry.hole,
+      strokeIndex: strokeIndexForHole(entry),
+    }))
+    .sort((a, b) => {
+      if (a.strokeIndex !== b.strokeIndex) return a.strokeIndex - b.strokeIndex;
+      return a.hole - b.hole;
+    });
+
+  const ranks = new Map<number, number>();
+  sorted.forEach((entry, index) => {
+    ranks.set(entry.hole, index + 1);
+  });
+  return ranks;
+}
+
+/** Handicap strokes received on a hole (each stroke is one net "pop"). */
+export function strokesReceivedOnHole(
+  handicapIndex: number | null | undefined,
+  scorecard: ScorecardHole[],
+  holeNumber: number
+): number {
+  const playing = playingHandicap(handicapIndex);
+  if (playing <= 0 || scorecard.length === 0) return 0;
+
+  const holeCount = scorecard.length;
+  const base = Math.floor(playing / holeCount);
+  const extra = playing % holeCount;
+  const rank = strokeRanksForScorecard(scorecard).get(holeNumber);
+  if (rank == null) return 0;
+
+  return base + (rank <= extra ? 1 : 0);
+}
+
 export function playerCumulativeToPar(
   scores: Record<string, number>,
   scorecard: ScorecardHole[]
@@ -137,6 +188,61 @@ export function playerCumulativeToPar(
   return hasScore ? diff : null;
 }
 
+export function playerNetCumulativeToPar(
+  scores: Record<string, number>,
+  scorecard: ScorecardHole[],
+  handicapIndex: number | null | undefined
+): number | null {
+  let diff = 0;
+  let hasScore = false;
+  for (const hole of scorecard) {
+    const strokes = scores[String(hole.hole)];
+    if (strokes != null) {
+      const pops = strokesReceivedOnHole(handicapIndex, scorecard, hole.hole);
+      diff += strokes - pops - hole.par;
+      hasScore = true;
+    }
+  }
+  return hasScore ? diff : null;
+}
+
+export function playerNetTotal(
+  scores: Record<string, number>,
+  scorecard: ScorecardHole[],
+  handicapIndex: number | null | undefined
+): number {
+  let total = 0;
+  for (const hole of scorecard) {
+    const strokes = scores[String(hole.hole)];
+    if (strokes != null) {
+      total += strokes - strokesReceivedOnHole(handicapIndex, scorecard, hole.hole);
+    }
+  }
+  return total;
+}
+
+export function playerStablefordPoints(
+  scores: Record<string, number>,
+  scorecard: ScorecardHole[],
+  handicapIndex: number | null | undefined,
+  scoringMode: LeaderboardScoringMode = "net"
+): number {
+  let points = 0;
+  for (const hole of scorecard) {
+    const strokes = scores[String(hole.hole)];
+    if (strokes != null) {
+      const net =
+        scoringMode === "net"
+          ? strokes - strokesReceivedOnHole(handicapIndex, scorecard, hole.hole)
+          : strokes;
+      points += Math.max(0, 2 + hole.par - net);
+    }
+  }
+  return points;
+}
+
+export type LeaderboardScoringMode = "gross" | "net";
+
 export interface LeaderboardRow<TPlayer> {
   player: TPlayer;
   rank: number;
@@ -151,37 +257,49 @@ export function buildLeaderboard<
     total: number;
     holesPlayed: number;
     scores: Record<string, number>;
+    handicapIndex?: number | null;
   },
->(players: T[], scorecard: ScorecardHole[]): LeaderboardRow<T>[] {
+>(players: T[], scorecard: ScorecardHole[], scoringMode: LeaderboardScoringMode = "gross"): LeaderboardRow<T>[] {
+  const toParFor = (player: T) =>
+    scoringMode === "net"
+      ? playerNetCumulativeToPar(player.scores, scorecard, player.handicapIndex)
+      : playerCumulativeToPar(player.scores, scorecard);
+
+  const totalFor = (player: T) =>
+    scoringMode === "net"
+      ? playerNetTotal(player.scores, scorecard, player.handicapIndex)
+      : player.total;
+
   const sorted = [...players].sort((a, b) => {
-    const aToPar = playerCumulativeToPar(a.scores, scorecard);
-    const bToPar = playerCumulativeToPar(b.scores, scorecard);
+    const aToPar = toParFor(a);
+    const bToPar = toParFor(b);
     if (aToPar == null && bToPar == null) return 0;
     if (aToPar == null) return 1;
     if (bToPar == null) return -1;
     if (aToPar !== bToPar) return aToPar - bToPar;
-    if (a.total !== b.total) return a.total - b.total;
+    if (totalFor(a) !== totalFor(b)) return totalFor(a) - totalFor(b);
     return b.holesPlayed - a.holesPlayed;
   });
 
   return sorted.map((player, index) => {
-    const toPar = playerCumulativeToPar(player.scores, scorecard);
+    const toPar = toParFor(player);
+    const total = totalFor(player);
     let rank = index + 1;
     if (index > 0) {
       const prev = sorted[index - 1];
-      const prevToPar = playerCumulativeToPar(prev.scores, scorecard);
+      const prevToPar = toParFor(prev);
       if (
         prevToPar === toPar &&
-        prev.total === player.total &&
+        totalFor(prev) === total &&
         prev.holesPlayed === player.holesPlayed
       ) {
         let r = index;
         while (r > 0) {
           const p = sorted[r - 1];
-          const pPar = playerCumulativeToPar(p.scores, scorecard);
+          const pPar = toParFor(p);
           if (
             pPar === toPar &&
-            p.total === player.total &&
+            totalFor(p) === total &&
             p.holesPlayed === player.holesPlayed
           ) {
             r--;
@@ -194,7 +312,7 @@ export function buildLeaderboard<
     return {
       player,
       rank,
-      total: player.total,
+      total,
       holesPlayed: player.holesPlayed,
       toPar,
     };
