@@ -4,10 +4,7 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Header } from "@/components/Header";
-import { CourseAutocomplete } from "@/components/CourseAutocomplete";
-import { CourseStrokeIndexEditor } from "@/components/CourseStrokeIndexEditor";
 import { formatStartTime } from "@/lib/tournament-time";
-import { TOURNAMENT_SCORING_FORMATS } from "@/lib/tournament-scoring-formats";
 import { AvatarWithSash } from "@/components/AvatarWithSash";
 
 interface RegisteredUser {
@@ -54,27 +51,6 @@ export default function TournamentsPage() {
   const [past, setPast] = useState<Tournament[]>([]);
   const [upcoming, setUpcoming] = useState<Tournament[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({
-    name: "",
-    description: "",
-    date: "",
-    startTime: "",
-    course: "",
-    courseId: null as string | null,
-    scoringFormat: "",
-    individualOrTeam: "individual" as "individual" | "team",
-    teamSize: "2" as "2" | "4",
-    availableSpots: "32",
-    greenFee: "",
-    prizePool: "",
-    clubDonation: "",
-    paymentMethod: "" as "" | "venmo" | "cash",
-    venmoUsername: "",
-    prizes: [] as { name: string; amount: string }[],
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState("");
   const [loadError, setLoadError] = useState("");
 
   const loadTournaments = () => {
@@ -118,67 +94,6 @@ export default function TournamentsPage() {
     loadTournaments();
   }, [status]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setIsSubmitting(true);
-    try {
-      const res = await fetch("/api/tournaments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: form.name.trim(),
-          description: form.description.trim() || null,
-          date: form.date,
-          startTime: form.startTime || null,
-          course: form.course.trim(),
-          courseId: form.courseId,
-          scoringFormat: form.scoringFormat,
-          individualOrTeam: form.individualOrTeam,
-          teamSize: form.individualOrTeam === "team" ? parseInt(form.teamSize, 10) : null,
-          availableSpots: parseInt(form.availableSpots, 10),
-          greenFee: parseFloat(form.greenFee) || 0,
-          prizePool: parseFloat(form.prizePool) || 0,
-          clubDonation: parseFloat(form.clubDonation) || 0,
-          paymentMethod: form.paymentMethod || null,
-          venmoUsername: form.paymentMethod === "venmo" ? form.venmoUsername : null,
-          prizes: form.prizes
-            .filter((p) => p.name.trim() && p.amount.trim())
-            .map((p) => ({ name: p.name.trim(), amount: parseFloat(p.amount) || 0 })),
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Failed to create tournament");
-        return;
-      }
-      setForm({
-        name: "",
-        description: "",
-        date: "",
-        startTime: "",
-        course: "",
-        courseId: null,
-        scoringFormat: "",
-        individualOrTeam: "individual",
-        teamSize: "2",
-        availableSpots: "32",
-        greenFee: "",
-        prizePool: "",
-        clubDonation: "",
-        paymentMethod: "",
-        venmoUsername: "",
-        prizes: [],
-      });
-      setShowForm(false);
-      loadTournaments();
-    } catch {
-      setError("Something went wrong");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const formatCurrency = (n: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
 
@@ -219,374 +134,29 @@ export default function TournamentsPage() {
             </p>
           </div>
           {isAdmin && (
-            <button
-              onClick={() => setShowForm(!showForm)}
+            <Link
+              href="/tournaments/create"
               className="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700"
             >
-              {showForm ? "Cancel" : "Create Tournament"}
-            </button>
+              Create Tournament
+            </Link>
           )}
         </div>
 
-        {(error || loadError) && (
+        {loadError && (
           <div className="mt-4 flex items-center gap-3">
-            <p className="text-sm text-red-600">{error || loadError}</p>
-            {loadError && (
-              <button
-                type="button"
-                onClick={() => {
-                  setLoadError("");
-                  setIsLoading(true);
-                  loadTournaments();
-                }}
-                className="text-sm font-medium text-emerald-600 hover:text-emerald-700"
-              >
-                Try again
-              </button>
-            )}
-          </div>
-        )}
-
-        {isAdmin && showForm && (
-          <div className="mt-8 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
-            <h2 className="font-semibold text-stone-900">New Tournament</h2>
-            <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-stone-700">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                  required
-                  className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                  placeholder="e.g. Spring Championship"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-stone-700">
-                  Description
-                </label>
-                <textarea
-                  value={form.description}
-                  onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-                  rows={2}
-                  className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 placeholder-stone-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                  placeholder="Short description (optional)"
-                />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="block text-sm font-medium text-stone-700">
-                    Date
-                  </label>
-                  <input
-                    type="date"
-                    value={form.date}
-                    onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))}
-                    required
-                    className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-stone-700">
-                    Start Time
-                  </label>
-                  <input
-                    type="time"
-                    value={form.startTime}
-                    onChange={(e) => setForm((p) => ({ ...p, startTime: e.target.value }))}
-                    className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-stone-700">
-                  Course
-                </label>
-                <CourseAutocomplete
-                  value={form.course}
-                  courseId={form.courseId}
-                  onChange={(name, courseId) =>
-                    setForm((p) => ({ ...p, course: name, courseId: courseId ?? null }))
-                  }
-                  placeholder="Search US golf courses"
-                  id="tournament-course"
-                  className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                />
-              </div>
-              {form.courseId ? (
-                <CourseStrokeIndexEditor courseId={form.courseId} />
-              ) : null}
-              <div>
-                <label className="block text-sm font-medium text-stone-700">
-                  Golf Scoring Format
-                </label>
-                <select
-                  value={form.scoringFormat}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, scoringFormat: e.target.value }))
-                  }
-                  required
-                  className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                >
-                  <option value="">Select format</option>
-                  {TOURNAMENT_SCORING_FORMATS.map((f) => (
-                    <option key={f} value={f}>
-                      {f}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-stone-700">
-                  Individual or Team
-                </label>
-                <div className="mt-2 flex rounded-lg border border-stone-300 p-1">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setForm((p) => ({ ...p, individualOrTeam: "individual" }))
-                    }
-                    className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-                      form.individualOrTeam === "individual"
-                        ? "bg-emerald-600 text-white"
-                        : "text-stone-600 hover:bg-stone-100"
-                    }`}
-                  >
-                    Individual
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setForm((p) => ({ ...p, individualOrTeam: "team" }))
-                    }
-                    className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-                      form.individualOrTeam === "team"
-                        ? "bg-emerald-600 text-white"
-                        : "text-stone-600 hover:bg-stone-100"
-                    }`}
-                  >
-                    Team
-                  </button>
-                </div>
-                {form.individualOrTeam === "team" && (
-                  <div className="mt-3">
-                    <label className="block text-xs font-medium text-stone-600">
-                      Team size
-                    </label>
-                    <div className="mt-1 flex gap-4">
-                      {(["2", "4"] as const).map((size) => (
-                        <label
-                          key={size}
-                          className="flex cursor-pointer items-center gap-2"
-                        >
-                          <input
-                            type="radio"
-                            name="teamSize"
-                            value={size}
-                            checked={form.teamSize === size}
-                            onChange={() =>
-                              setForm((p) => ({ ...p, teamSize: size }))
-                            }
-                            className="h-4 w-4 border-stone-300 text-emerald-600 focus:ring-emerald-500"
-                          />
-                          <span className="text-sm text-stone-700">
-                            {size} players
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-stone-700">
-                  Available Spots
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  max={999}
-                  value={form.availableSpots}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, availableSpots: e.target.value }))
-                  }
-                  required
-                  className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div>
-                  <label className="block text-sm font-medium text-stone-700">
-                    Green Fee ($)
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={form.greenFee}
-                    onChange={(e) =>
-                      setForm((p) => ({ ...p, greenFee: e.target.value }))
-                    }
-                    placeholder="0"
-                    className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-stone-700">
-                    Prize Pool ($)
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={form.prizePool}
-                    onChange={(e) =>
-                      setForm((p) => ({ ...p, prizePool: e.target.value }))
-                    }
-                    placeholder="0"
-                    className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-stone-700">
-                    Club Donation ($)
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={form.clubDonation}
-                    onChange={(e) =>
-                      setForm((p) => ({ ...p, clubDonation: e.target.value }))
-                    }
-                    placeholder="0"
-                    className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-stone-700">
-                  Payment Options
-                </label>
-                <div className="mt-2 flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setForm((p) => ({
-                        ...p,
-                        paymentMethod: p.paymentMethod === "venmo" ? "" : "venmo",
-                      }))
-                    }
-                    className={`rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${
-                      form.paymentMethod === "venmo"
-                        ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-                        : "border-stone-300 text-stone-600 hover:bg-stone-50"
-                    }`}
-                  >
-                    Venmo
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setForm((p) => ({
-                        ...p,
-                        paymentMethod: p.paymentMethod === "cash" ? "" : "cash",
-                      }))
-                    }
-                    className={`rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${
-                      form.paymentMethod === "cash"
-                        ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-                        : "border-stone-300 text-stone-600 hover:bg-stone-50"
-                    }`}
-                  >
-                    Cash
-                  </button>
-                </div>
-                {form.paymentMethod === "venmo" && (
-                  <div className="mt-3">
-                    <label className="block text-sm font-medium text-stone-700">
-                      Venmo Username
-                    </label>
-                    <input
-                      type="text"
-                      value={form.venmoUsername}
-                      onChange={(e) =>
-                        setForm((p) => ({ ...p, venmoUsername: e.target.value }))
-                      }
-                      placeholder="@username"
-                      className="mt-1 w-full rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    />
-                  </div>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-stone-700">
-                  Prizes
-                </label>
-                <div className="mt-2 space-y-2">
-                  {form.prizes.map((prize, idx) => (
-                    <div key={idx} className="flex gap-2">
-                      <input
-                        type="text"
-                        value={prize.name}
-                        onChange={(e) => {
-                          const updated = [...form.prizes];
-                          updated[idx] = { ...updated[idx], name: e.target.value };
-                          setForm((p) => ({ ...p, prizes: updated }));
-                        }}
-                        placeholder="Prize name (e.g., 1st Place)"
-                        className="flex-1 rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                      />
-                      <input
-                        type="number"
-                        min={0}
-                        step={0.01}
-                        value={prize.amount}
-                        onChange={(e) => {
-                          const updated = [...form.prizes];
-                          updated[idx] = { ...updated[idx], amount: e.target.value };
-                          setForm((p) => ({ ...p, prizes: updated }));
-                        }}
-                        placeholder="Amount"
-                        className="w-28 rounded-lg border border-stone-300 px-4 py-2.5 text-stone-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const updated = form.prizes.filter((_, i) => i !== idx);
-                          setForm((p) => ({ ...p, prizes: updated }));
-                        }}
-                        className="rounded-lg border border-stone-300 px-3 py-2.5 text-stone-500 hover:bg-stone-50 hover:text-stone-700"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setForm((p) => ({
-                        ...p,
-                        prizes: [...p.prizes, { name: "", amount: "" }],
-                      }))
-                    }
-                    className="rounded-lg border border-dashed border-stone-300 px-4 py-2.5 text-sm text-stone-600 hover:border-stone-400 hover:text-stone-700"
-                  >
-                    + Add Prize
-                  </button>
-                </div>
-              </div>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-              >
-                {isSubmitting ? "Creating…" : "Create Tournament"}
-              </button>
-            </form>
+            <p className="text-sm text-red-600">{loadError}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setLoadError("");
+                setIsLoading(true);
+                loadTournaments();
+              }}
+              className="text-sm font-medium text-emerald-600 hover:text-emerald-700"
+            >
+              Try again
+            </button>
           </div>
         )}
 

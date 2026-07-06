@@ -802,6 +802,14 @@ export default function TournamentDetailPage() {
             </div>
             {isAdmin && !isEditing && (
               <div className="flex shrink-0 gap-2">
+                {tournament.registeredUsers.length > 0 && !tournament.scoringCompleted ? (
+                  <Link
+                    href={`/tournaments/${tournament.slug ?? tournament.id}/setup`}
+                    className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-100"
+                  >
+                    Set up tournament
+                  </Link>
+                ) : null}
                 <button
                   type="button"
                   onClick={() => setIsEditing(true)}
