@@ -21,9 +21,17 @@ export function autoAssignTeams(userIds: string[], teamSize: number): AutoAssign
   if (userIds.length === 0) return [];
 
   const size = effectiveTeamSize(teamSize);
+  const shuffled = [...userIds];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const current = shuffled[i]!;
+    shuffled[i] = shuffled[j]!;
+    shuffled[j] = current;
+  }
+
   const teams: AutoAssignTeam[] = [];
-  for (let i = 0; i < userIds.length; i += size) {
-    const group = userIds.slice(i, i + size);
+  for (let i = 0; i < shuffled.length; i += size) {
+    const group = shuffled.slice(i, i + size);
     teams.push({
       name: `Team ${teams.length + 1}`,
       sortOrder: teams.length,

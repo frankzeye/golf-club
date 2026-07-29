@@ -279,6 +279,7 @@ export default function TournamentDetailPage() {
   const [clubMembers, setClubMembers] = useState<ClubMember[]>([]);
   const [handicapDrafts, setHandicapDrafts] = useState<Record<string, string>>({});
   const [savingHandicapId, setSavingHandicapId] = useState<string | null>(null);
+  const [generatingTeams, setGeneratingTeams] = useState(false);
 
   const loadComments = useCallback(() => {
     if (!id) return;
@@ -675,6 +676,38 @@ export default function TournamentDetailPage() {
     }
   };
 
+  const handleRandomlyGenerateTeams = async () => {
+    if (!tournament) return;
+    if ((tournament.teams?.length ?? 0) > 0) {
+      const confirmed = window.confirm(
+        "This will replace the current teams with a new random assignment. Continue?"
+      );
+      if (!confirmed) return;
+    }
+    setGeneratingTeams(true);
+    setError("");
+    try {
+      const res = await fetch(
+        `/api/tournaments/${tournament.slug ?? tournament.id}/teams/auto-assign`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Failed to generate teams");
+        return;
+      }
+      setTournament((prev) => (prev ? { ...prev, teams: data.teams ?? [] } : prev));
+    } catch {
+      setError("Failed to generate teams");
+    } finally {
+      setGeneratingTeams(false);
+    }
+  };
+
   const handleAdminRemoveRegistration = async (
     registrationId: string,
     displayName: string
@@ -807,7 +840,7 @@ export default function TournamentDetailPage() {
               )}
             </div>
             {isAdmin && !isEditing && (
-              <div className="flex shrink-0 gap-2">
+              <div className="flex shrink-0 flex-wrap gap-2">
                 {tournament.registeredUsers.length > 0 && !tournament.scoringCompleted ? (
                   <Link
                     href={`/tournaments/${tournament.slug ?? tournament.id}/setup`}
@@ -835,6 +868,28 @@ export default function TournamentDetailPage() {
             )}
           </div>
 
+          {isAdmin &&
+          !isEditing &&
+          tournament.individualOrTeam === "team" &&
+          tournament.registeredCount >= tournament.availableSpots &&
+          !tournament.scoringCompleted ? (
+            <div className="mt-6 flex flex-col gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-emerald-900">All spots filled</p>
+                <p className="mt-1 text-sm text-emerald-800">
+                  Randomly assign registered players into teams of {tournament.teamSize ?? 2}.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleRandomlyGenerateTeams}
+                disabled={generatingTeams}
+                className="shrink-0 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {generatingTeams ? "Generating…" : "Randomly Generate Teams"}
+              </button>
+            </div>
+          ) : null}
           {isEditing ? (
             <form
               onSubmit={(e) => {

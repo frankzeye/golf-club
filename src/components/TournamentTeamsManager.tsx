@@ -60,7 +60,7 @@ export function TournamentTeamsManager({
   initialTeams,
   onTeamsChange,
 }: TournamentTeamsManagerProps) {
-  const maxTeamSize = teamSize === 4 ? 4 : 2;
+  const maxTeamSize = Number.isInteger(teamSize) && teamSize >= 1 ? teamSize : 2;
   const [drafts, setDrafts] = useState<TeamDraft[]>(() =>
     initialTeams.length > 0 ? initialTeams.map(toDraft) : [newDraft(0)]
   );
@@ -133,12 +133,22 @@ export function TournamentTeamsManager({
       }
       setDrafts(data.teams.map(toDraft));
       onTeamsChange?.(data.teams);
-      setSuccess(`Teams assigned in groups of ${maxTeamSize}.`);
+      setSuccess(`Randomly generated teams of ${maxTeamSize}.`);
     } catch {
-      setError("Failed to auto-assign teams");
+      setError("Failed to randomly generate teams");
     } finally {
       setAutoAssigning(false);
     }
+  }
+
+  async function confirmAndAutoAssign() {
+    if (initialTeams.length > 0) {
+      const confirmed = window.confirm(
+        "This will replace the current teams with a new random assignment. Continue?"
+      );
+      if (!confirmed) return;
+    }
+    await autoAssign();
   }
 
   function togglePlayer(teamClientId: string, userId: string) {
@@ -189,11 +199,11 @@ export function TournamentTeamsManager({
           </button>
           <button
             type="button"
-            onClick={autoAssign}
+            onClick={confirmAndAutoAssign}
             disabled={autoAssigning || saving}
-            className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:opacity-50"
+            className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"
           >
-            {autoAssigning ? "Assigning…" : `Auto-assign teams of ${maxTeamSize}`}
+            {autoAssigning ? "Generating…" : "Randomly Generate Teams"}
           </button>
           <button
             type="button"
