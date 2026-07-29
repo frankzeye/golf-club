@@ -15,8 +15,10 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getAuthSession(request);
     const userId = session?.user?.id;
+    const isAdmin = session?.user?.role === "admin";
 
     const tournaments = await prisma.tournament.findMany({
+      where: isAdmin ? undefined : { adminOnly: false },
       orderBy: { date: "asc" },
       include: {
         playRound: { select: { status: true } },
@@ -119,7 +121,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, description, date, startTime, course, courseId, scoringFormat, individualOrTeam, teamSize, availableSpots, greenFee, prizePool, clubDonation, paymentMethod, venmoUsername, prizes } = body;
+    const { name, description, date, startTime, course, courseId, scoringFormat, individualOrTeam, teamSize, availableSpots, greenFee, prizePool, clubDonation, paymentMethod, venmoUsername, prizes, adminOnly } = body;
 
     if (!name || typeof name !== "string" || name.trim().length === 0) {
       return NextResponse.json(
@@ -210,6 +212,7 @@ export async function POST(request: NextRequest) {
         paymentMethod: paymentMethod === "venmo" || paymentMethod === "cash" ? paymentMethod : null,
         venmoUsername: paymentMethod === "venmo" && venmoUsername ? venmoUsername.trim() : null,
         prizes: Array.isArray(prizes) ? JSON.stringify(prizes) : null,
+        adminOnly: adminOnly === true,
       },
     });
 

@@ -33,6 +33,9 @@ export async function POST(
   if (!tournamentWithCount) {
     return NextResponse.json({ error: "Tournament not found" }, { status: 404 });
   }
+  if (tournamentWithCount.adminOnly && session.user.role !== "admin") {
+    return NextResponse.json({ error: "Tournament not found" }, { status: 404 });
+  }
   const tournamentId = tournamentWithCount.id;
 
   if (isTournamentPast(tournamentWithCount, tournamentWithCount.playRound)) {

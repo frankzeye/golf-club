@@ -366,6 +366,31 @@ export function TournamentCreateWizard() {
               tournament without them.
             </p>
           )}
+          <div className="border-t border-stone-200 pt-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-stone-900">Admin only</p>
+                <p className="mt-1 text-sm text-stone-500">
+                  When enabled, this tournament is hidden from members and only visible to admins.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={form.adminOnly}
+                onClick={() => setForm((prev) => ({ ...prev, adminOnly: !prev.adminOnly }))}
+                className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+                  form.adminOnly ? "bg-emerald-600" : "bg-stone-300"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                    form.adminOnly ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
     </WizardShell>

@@ -20,6 +20,7 @@ export interface TournamentCreateFormState {
   paymentMethod: "" | "venmo" | "cash";
   venmoUsername: string;
   prizes: TournamentPrizeDraft[];
+  adminOnly: boolean;
 }
 
 export const DEFAULT_TOURNAMENT_CREATE_FORM: TournamentCreateFormState = {
@@ -39,6 +40,7 @@ export const DEFAULT_TOURNAMENT_CREATE_FORM: TournamentCreateFormState = {
   paymentMethod: "",
   venmoUsername: "",
   prizes: [],
+  adminOnly: false,
 };
 
 export function serializeTournamentCreateForm(form: TournamentCreateFormState) {
@@ -64,6 +66,7 @@ export function serializeTournamentCreateForm(form: TournamentCreateFormState) {
         name: prize.name.trim(),
         amount: parseFloat(prize.amount) || 0,
       })),
+    adminOnly: !!form.adminOnly,
   };
 }
 

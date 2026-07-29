@@ -160,6 +160,7 @@ model Tournament {
   paymentMethod  String?  // "venmo" | "cash"
   venmoUsername  String?
   prizes         String?  // JSON array: [{ name: string, amount: number }]
+  adminOnly      Boolean  @default(false) // When true, only admins can see the tournament
   createdAt      DateTime @default(now())
   registrations  TournamentRegistration[]
   comments       Comment[]

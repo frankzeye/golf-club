@@ -121,6 +121,7 @@ interface TournamentDetail {
   paymentMethod: string | null;
   venmoUsername: string | null;
   prizes: Prize[];
+  adminOnly?: boolean;
   registeredCount: number;
   isRegistered: boolean;
   myPaymentStatus: string | null;
@@ -788,6 +789,11 @@ export default function TournamentDetailPage() {
               <h1 className="font-serif text-2xl font-semibold text-stone-900">
                 {tournament.name}
               </h1>
+              {tournament.adminOnly ? (
+                <span className="mt-2 inline-flex rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                  Admin only
+                </span>
+              ) : null}
               <p className="mt-2 font-semibold text-stone-900">
                 {formatDate(tournament.date)}
                 {formatStartTime(tournament.startTime) && (

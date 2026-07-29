@@ -34,6 +34,7 @@ export async function GET(
 ) {
   const session = await getAuthSession(request);
   const userId = session?.user?.id;
+  const isAdmin = session?.user?.role === "admin";
 
   const { id: idOrSlug } = await params;
 
@@ -82,6 +83,9 @@ export async function GET(
     },
   });
   if (!tournamentWithReg) {
+    return NextResponse.json({ error: "Tournament not found" }, { status: 404 });
+  }
+  if (tournamentWithReg.adminOnly && !isAdmin) {
     return NextResponse.json({ error: "Tournament not found" }, { status: 404 });
   }
 
@@ -159,6 +163,7 @@ export async function GET(
     paymentMethod: t.paymentMethod,
     venmoUsername: t.venmoUsername,
     prizes: t.prizes ? JSON.parse(t.prizes) : [],
+    adminOnly: t.adminOnly,
     registeredCount: t.registrations.length,
     isRegistered: !!myRegistration,
     myPaymentStatus: myRegistration?.paymentStatus ?? null,
@@ -223,6 +228,7 @@ export async function PATCH(
       paymentMethod,
       venmoUsername,
       prizes,
+      adminOnly,
     } = body;
 
     const updates: Record<string, unknown> = {};
@@ -296,6 +302,9 @@ export async function PATCH(
     }
     if (prizes !== undefined) {
       updates.prizes = Array.isArray(prizes) ? JSON.stringify(prizes) : null;
+    }
+    if (typeof adminOnly === "boolean") {
+      updates.adminOnly = adminOnly;
     }
 
     if (updates.name != null || updates.date != null) {
