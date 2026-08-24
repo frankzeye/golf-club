@@ -1520,17 +1520,6 @@ export default function TournamentDetailPage() {
             />
           ) : null}
 
-          {isAdmin && !isEditing ? (
-            <TournamentFoursomesManager
-              tournamentId={tournament.slug ?? tournament.id}
-              registeredUsers={tournament.registeredUsers}
-              initialFoursomes={tournament.foursomes ?? []}
-              onFoursomesChange={(foursomes) =>
-                setTournament((prev) => (prev ? { ...prev, foursomes } : prev))
-              }
-            />
-          ) : null}
-
           {isAdmin && !isEditing && tournament.individualOrTeam === "team" ? (
             <TournamentTeamsManager
               tournamentId={tournament.slug ?? tournament.id}
@@ -1539,6 +1528,17 @@ export default function TournamentDetailPage() {
               initialTeams={tournament.teams ?? []}
               onTeamsChange={(teams) =>
                 setTournament((prev) => (prev ? { ...prev, teams } : prev))
+              }
+            />
+          ) : null}
+
+          {isAdmin && !isEditing ? (
+            <TournamentFoursomesManager
+              tournamentId={tournament.slug ?? tournament.id}
+              registeredUsers={tournament.registeredUsers}
+              initialFoursomes={tournament.foursomes ?? []}
+              onFoursomesChange={(foursomes) =>
+                setTournament((prev) => (prev ? { ...prev, foursomes } : prev))
               }
             />
           ) : null}
@@ -1553,6 +1553,92 @@ export default function TournamentDetailPage() {
                 setTournament((prev) => (prev ? { ...prev, flights } : prev))
               }
             />
+          ) : null}
+
+          {!tournament.scoringCompleted ? (
+            <>
+              {tournament.individualOrTeam === "team" ? (
+                <div className="mt-8 border-t border-stone-200 pt-6">
+                  <h2 className="text-sm font-semibold text-stone-900">Teams</h2>
+                  <div className="mt-3 overflow-x-auto rounded-xl border border-stone-200">
+                    <table className="min-w-full divide-y divide-stone-200 text-sm">
+                      <thead className="bg-stone-50">
+                        <tr>
+                          <th className="px-4 py-2.5 text-left font-medium text-stone-600">Team</th>
+                          <th className="px-4 py-2.5 text-left font-medium text-stone-600">Players</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-stone-100 bg-white">
+                        {(tournament.teams ?? []).length === 0 ? (
+                          <tr>
+                            <td colSpan={2} className="px-4 py-3 text-stone-500">
+                              Teams have not been assigned yet.
+                            </td>
+                          </tr>
+                        ) : (
+                          (tournament.teams ?? []).map((team) => (
+                            <tr key={team.id}>
+                              <td className="whitespace-nowrap px-4 py-3 font-medium text-stone-900">
+                                {team.name}
+                              </td>
+                              <td className="px-4 py-3 text-stone-700">
+                                {team.members.length > 0
+                                  ? team.members.map((member) => member.fullName).join(", ")
+                                  : "—"}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="mt-8 border-t border-stone-200 pt-6">
+                <h2 className="text-sm font-semibold text-stone-900">Foursomes</h2>
+                <div className="mt-3 overflow-x-auto rounded-xl border border-stone-200">
+                  <table className="min-w-full divide-y divide-stone-200 text-sm">
+                    <thead className="bg-stone-50">
+                      <tr>
+                        <th className="px-4 py-2.5 text-left font-medium text-stone-600">Group</th>
+                        <th className="px-4 py-2.5 text-left font-medium text-stone-600">Tee time</th>
+                        <th className="px-4 py-2.5 text-left font-medium text-stone-600">Starting hole</th>
+                        <th className="px-4 py-2.5 text-left font-medium text-stone-600">Players</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100 bg-white">
+                      {(tournament.foursomes ?? []).length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-3 text-stone-500">
+                            Foursomes have not been assigned yet.
+                          </td>
+                        </tr>
+                      ) : (
+                        (tournament.foursomes ?? []).map((foursome) => (
+                          <tr key={foursome.id}>
+                            <td className="whitespace-nowrap px-4 py-3 font-medium text-stone-900">
+                              {foursome.name}
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-stone-700">
+                              {formatStartTime(foursome.startTime) ?? "—"}
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-stone-700">
+                              {foursome.startHole}
+                            </td>
+                            <td className="px-4 py-3 text-stone-700">
+                              {foursome.members.length > 0
+                                ? foursome.members.map((member) => member.fullName).join(", ")
+                                : "—"}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
           ) : null}
 
           {(tournament.registeredUsers.length > 0 || isAdmin) && (
